@@ -1,1 +1,11 @@
 logs/
+artifacts/
+
+data/raw/*
+data/processed/*
+data/model/*
+
+!data/raw/*.dvc
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/model/.gitkeep
