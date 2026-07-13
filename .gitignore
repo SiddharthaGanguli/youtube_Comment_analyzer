@@ -9,3 +9,7 @@ data/model/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/model/.gitkeep
+
+venv/
+
+dataset.csv
