@@ -68,4 +68,5 @@ mlflow:
   database: .mlflow/mlflow.db
   experiment_name: youtube-comment-sentiment
   run_name: tfidf-logistic-regression
+  user_name: Siddhartha Ganguli
   artifact_location: s3://yt-comment-analyzer-main/datasets/youtube-comments/mlflow

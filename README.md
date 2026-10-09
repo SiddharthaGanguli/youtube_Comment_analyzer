@@ -105,7 +105,8 @@ Evaluation resumes that training run and adds test metrics, the confusion matrix
 class report, and error sample. A failed fit, evaluation, or artifact upload fails
 the stage instead of reporting success. The test set is only read by evaluation.
 
-Settings are in the `mlflow` section of `config/config.yaml`. Run metadata lives
+Settings are in the `mlflow` section of `config/config.yaml`; `user_name` sets the
+creator displayed for runs and logged models. Run metadata lives
 in the ignored `.mlflow/mlflow.db` SQLite database. Model and report artifacts
 are uploaded directly to
 `s3://yt-comment-analyzer-main/datasets/youtube-comments/mlflow`.

@@ -55,6 +55,7 @@ class MLflowConfig:
     experiment_name: str
     artifact_location: str
     run_name: str
+    user_name: str = "Siddhartha Ganguli"
 
 
 @dataclass(frozen=True)

@@ -40,6 +40,10 @@ class TrackingTests(unittest.TestCase):
             report = ModelTraining(training).run()
             mlflow = load_mlflow()
             run_id = report["mlflow"]["run_id"]
+            self.assertEqual(mlflow.get_run(run_id).data.tags["mlflow.user"], settings.user_name)
+            self.assertEqual(mlflow.get_run(run_id).info.user_id, settings.user_name)
+            logged_model = mlflow.get_logged_model(report["mlflow"]["model_uri"].split("/")[-1])
+            self.assertEqual(logged_model.tags["mlflow.user"], settings.user_name)
             model = mlflow.sklearn.load_model(report["mlflow"]["model_uri"])
             self.assertEqual(model.predict(["wonderful"]).tolist(), [2])
             import numpy as np

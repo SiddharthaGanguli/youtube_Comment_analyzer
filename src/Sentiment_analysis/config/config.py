@@ -130,4 +130,5 @@ class ConfigurationManager:
             experiment_name=settings["experiment_name"],
             artifact_location=settings["artifact_location"],
             run_name=settings["run_name"],
+            user_name=settings["user_name"],
         )

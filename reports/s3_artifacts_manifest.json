@@ -173,15 +173,17 @@
     "tracking_uri": "sqlite:///E:/Ai-sys/youtube_Comment_analyzer/.mlflow/mlflow.db",
     "artifact_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/mlflow/558fb584d2b648c08f81b851a9396a51/artifacts",
     "model_uri": "models:/m-0ce07e7788ef43d98dc7f2b35b954022",
-    "model_download_and_prediction_verified": true
+    "model_download_and_prediction_verified": true,
+    "created_by": "Siddhartha Ganguli"
   },
   "tracking_database_backup": {
     "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/tracking/558fb584d2b648c08f81b851a9396a51/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/mlflow.db",
     "size_bytes": 954368,
-    "md5": "3d6aeff18c2ce7e94a7afeebfb4a85b8",
+    "md5": "a99d8a04fa9277e8215bca74f893fe47",
     "verified": true,
-    "sha256": "6311d934f27a0d7ec40f527bba8168cad44142c10e5949a63a66568033a49f3a"
+    "sha256": "76201456c5bcbdd2d8f3e928f638b99b8b634f753ef4e4ee77b769941c2eddb5"
   },
   "dvc_lock_s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/manifests/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/dvc.lock",
-  "manifest_s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/manifests/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/s3_artifacts_manifest.json"
+  "manifest_s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/manifests/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/s3_artifacts_manifest.json",
+  "tracking_metadata_updated_at": "2026-10-09T10:16:56.115196+00:00"
 }

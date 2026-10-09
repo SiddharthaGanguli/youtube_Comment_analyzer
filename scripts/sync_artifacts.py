@@ -109,7 +109,8 @@ def main():
         local = joblib.load(PROJECT_ROOT / manager.config["model_training"]["model_file"])["pipeline"]
         examples = ["I enjoyed this video.", "This was not helpful.", "The video was uploaded today."]
         np.testing.assert_allclose(model.predict_proba(examples), local.predict_proba(examples))
-        manifest["mlflow"] = {**training["mlflow"], "model_download_and_prediction_verified": True}
+        manifest["mlflow"] = {**training["mlflow"], "created_by": run.data.tags.get("mlflow.user"),
+                              "model_download_and_prediction_verified": True}
 
         database = PROJECT_ROOT / manager.config["mlflow"]["database"]
         snapshot = PROJECT_ROOT / "artifacts/experiment_tracking/mlflow.db"

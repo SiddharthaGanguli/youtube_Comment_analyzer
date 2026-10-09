@@ -46,6 +46,7 @@ def experiment_run(settings, previous=None):
             if experiment.name != settings.experiment_name or experiment.artifact_location != settings.artifact_location:
                 raise ValueError("Training run belongs to a different MLflow experiment or artifact location")
             with mlflow.start_run(run_id=previous["run_id"]):
+                mlflow.set_tag("mlflow.user", settings.user_name)
                 try:
                     yield ExperimentTracking(mlflow, settings)
                 except Exception:
@@ -62,7 +63,8 @@ def experiment_run(settings, previous=None):
                 if experiment.artifact_location != settings.artifact_location:
                     raise ValueError("Existing MLflow experiment has a different artifact location")
                 experiment_id = experiment.experiment_id
-            with mlflow.start_run(experiment_id=experiment_id, run_name=settings.run_name):
+            with mlflow.start_run(experiment_id=experiment_id, run_name=settings.run_name,
+                                  tags={"mlflow.user": settings.user_name}):
                 yield ExperimentTracking(mlflow, settings)
 
 
@@ -98,6 +100,7 @@ class ExperimentTracking:
                               ("scikit-learn", "numpy", "scipy", "joblib", "cloudpickle")],
             metadata={"label_mapping": {str(key): value for key, value in config.label_mapping.items()},
                       "preprocessing_sha256": report["preprocessing_sha256"]},
+            tags={"mlflow.user": self.settings.user_name},
         )
         run = mlflow.active_run()
         report["mlflow"] = {"run_id": run.info.run_id, "experiment_id": run.info.experiment_id,
