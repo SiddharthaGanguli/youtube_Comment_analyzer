@@ -1,6 +1,6 @@
 {
-  "verified_at": "2026-10-09T09:47:26.895725+00:00",
-  "dvc_lock_sha256": "3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978",
+  "verified_at": "2026-10-09T10:46:28.958071+00:00",
+  "dvc_lock_sha256": "9d9f16b5eadd977afe6ca9b48d734f2073d5eccc30fc06ef672e4f07b9e128ae",
   "remote": "s3://yt-comment-analyzer-main/datasets/youtube-comments",
   "stages": {
     "ingestion": [
@@ -95,24 +95,24 @@
       {
         "path": "artifacts/model_training",
         "object": {
-          "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/b3/6c8a017f3dde1305b6136111b93c31.dir",
+          "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/20/0d3a53e108e91c1410cc0c05c4d24a.dir",
           "size_bytes": 162,
-          "md5": "b36c8a017f3dde1305b6136111b93c31",
+          "md5": "200d3a53e108e91c1410cc0c05c4d24a",
           "verified": true
         },
         "files": [
           {
             "path": "artifacts/model_training/sentiment_model.joblib",
-            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/15/ee2f927121b9b3c94707d1a3633f8e",
-            "size_bytes": 2323587,
-            "md5": "15ee2f927121b9b3c94707d1a3633f8e",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/7b/86a0d2ff0acdd8bd8e1717f272f225",
+            "size_bytes": 2323682,
+            "md5": "7b86a0d2ff0acdd8bd8e1717f272f225",
             "verified": true
           },
           {
             "path": "artifacts/model_training/training_report.json",
-            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/b5/68448dca11da4e4169afda1c03accc",
-            "size_bytes": 1935,
-            "md5": "b568448dca11da4e4169afda1c03accc",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/97/831de5fcf09172b328042841b8e0fe",
+            "size_bytes": 2122,
+            "md5": "97831de5fcf09172b328042841b8e0fe",
             "verified": true
           }
         ]
@@ -122,9 +122,9 @@
       {
         "path": "artifacts/model_evaluation",
         "object": {
-          "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/6a/a334b18c9a02e0bcf386e37fb58592.dir",
+          "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/17/a8345702fc08374e7dba6b18d9f002.dir",
           "size_bytes": 404,
-          "md5": "6aa334b18c9a02e0bcf386e37fb58592",
+          "md5": "17a8345702fc08374e7dba6b18d9f002",
           "verified": true
         },
         "files": [
@@ -158,32 +158,52 @@
           },
           {
             "path": "artifacts/model_evaluation/evaluation_report.json",
-            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/3d/33798587c386f100a7644ec62a4125",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/a1/e9afaab4d7ff6bd23bd74df5709443",
             "size_bytes": 1327,
-            "md5": "3d33798587c386f100a7644ec62a4125",
+            "md5": "a1e9afaab4d7ff6bd23bd74df5709443",
             "verified": true
           }
         ]
       }
     ]
   },
+  "label_review": {
+    "path": "data/processed/eda/label_review_sample.csv",
+    "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/56/e1e7fc1c3fab5976dac5d9b02e2bd3",
+    "size_bytes": 60721,
+    "md5": "56e1e7fc1c3fab5976dac5d9b02e2bd3",
+    "verified": true,
+    "sha256": "0ec7ccc3fa2a73b404b5037d8842d38d515c1ce0229f8b98ea6cc1e95397fe8c",
+    "assistant_reviewed_rows": 200,
+    "manual_review_complete": false
+  },
   "mlflow": {
-    "run_id": "558fb584d2b648c08f81b851a9396a51",
+    "run_id": "e7a126f5584b46088d55b2c4bd064a41",
     "experiment_id": "1",
     "tracking_uri": "sqlite:///E:/Ai-sys/youtube_Comment_analyzer/.mlflow/mlflow.db",
-    "artifact_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/mlflow/558fb584d2b648c08f81b851a9396a51/artifacts",
-    "model_uri": "models:/m-0ce07e7788ef43d98dc7f2b35b954022",
-    "model_download_and_prediction_verified": true,
-    "created_by": "Siddhartha Ganguli"
+    "artifact_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/mlflow/e7a126f5584b46088d55b2c4bd064a41/artifacts",
+    "model_uri": "models:/m-29f868c8738c45a1a09bf606a4bb242c",
+    "created_by": "Siddhartha Ganguli",
+    "model_download_and_prediction_verified": true
+  },
+  "prediction_service": {
+    "model_sha256": "c4ea55bc939afb265f6103703799721fbaa994aa69607fa3ae30daec562395ad",
+    "text_preprocessing": {
+      "version": 1,
+      "unicode_normalization": "NFKC",
+      "html_unescape": true,
+      "collapse_whitespace": true,
+      "language_policy": "keep_all"
+    },
+    "cloud_class_scores_verified": true
   },
   "tracking_database_backup": {
-    "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/tracking/558fb584d2b648c08f81b851a9396a51/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/mlflow.db",
-    "size_bytes": 954368,
-    "md5": "a99d8a04fa9277e8215bca74f893fe47",
+    "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/tracking/e7a126f5584b46088d55b2c4bd064a41/9d9f16b5eadd977afe6ca9b48d734f2073d5eccc30fc06ef672e4f07b9e128ae/mlflow.db",
+    "size_bytes": 970752,
+    "md5": "5ce56ea452f659223c95072d780f46c1",
     "verified": true,
-    "sha256": "76201456c5bcbdd2d8f3e928f638b99b8b634f753ef4e4ee77b769941c2eddb5"
+    "sha256": "307b723b949f88752ddfcb7be15f26a03938c595ff833ede03c1143553d1959a"
   },
-  "dvc_lock_s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/manifests/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/dvc.lock",
-  "manifest_s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/manifests/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/s3_artifacts_manifest.json",
-  "tracking_metadata_updated_at": "2026-10-09T10:16:56.115196+00:00"
+  "dvc_lock_s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/manifests/9d9f16b5eadd977afe6ca9b48d734f2073d5eccc30fc06ef672e4f07b9e128ae/dvc.lock",
+  "manifest_s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/manifests/9d9f16b5eadd977afe6ca9b48d734f2073d5eccc30fc06ef672e4f07b9e128ae/s3_artifacts_manifest.json"
 }

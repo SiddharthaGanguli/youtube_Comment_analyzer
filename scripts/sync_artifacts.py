@@ -16,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.Sentiment_analysis.config.config import ConfigurationManager
+from src.Sentiment_analysis.services.prediction import PredictionService
 from src.Sentiment_analysis.utils.aws_credentials import aws_credentials
 from src.Sentiment_analysis.utils.common import read_yaml, sha256_file, write_json
 from src.Sentiment_analysis.utils.experiment_tracking import load_mlflow
@@ -102,15 +103,44 @@ def main():
                 outputs.append(item)
             manifest["stages"][stage] = outputs
 
-        # Download the logged model and check inference, rather than only checking object existence.
+        review_pointer = PROJECT_ROOT / "data/processed/eda/label_review_sample.csv.dvc"
+        if review_pointer.is_file():
+            print("Pushing and verifying the label-review worksheet", flush=True)
+            subprocess.run([sys.executable, "-m", "dvc", "push", str(review_pointer)],
+                           cwd=PROJECT_ROOT, check=True)
+            output = read_yaml(review_pointer)["outs"][0]
+            digest = output["md5"]
+            review_file = review_pointer.parent / output["path"]
+            report = json.loads((PROJECT_ROOT / "reports/label_review_report.json").read_text(encoding="utf-8"))
+            if sha256_file(review_file) != report["review_sha256"] or not report["source_verified"]:
+                raise ValueError("Refresh the verified label-review summary before synchronizing")
+            key = f"{prefix}/files/md5/{digest[:2]}/{digest[2:]}"
+            manifest["label_review"] = {
+                "path": review_file.relative_to(PROJECT_ROOT).as_posix(),
+                **verify_object(client, bucket, key, digest, output["size"]),
+                "sha256": report["review_sha256"],
+                "assistant_reviewed_rows": report["assistant_reviewed_rows"],
+                "manual_review_complete": report["manual_review_complete"],
+            }
+
+        # Compare the S3 model with the shared service on text requiring normalization.
         model = mlflow.sklearn.load_model(training["mlflow"]["model_uri"])
-        import joblib
         import numpy as np
-        local = joblib.load(PROJECT_ROOT / manager.config["model_training"]["model_file"])["pipeline"]
-        examples = ["I enjoyed this video.", "This was not helpful.", "The video was uploaded today."]
-        np.testing.assert_allclose(model.predict_proba(examples), local.predict_proba(examples))
+        service = PredictionService(manager.get_model_prediction_config())
+        examples = ["I enjoyed this video.", "This was not helpful.", "The video was uploaded today.",
+                    "  Ｉ enjoyed this video &amp; learned a lot! 😊  "]
+        predictions = service.predict(examples)
+        if predictions["summary"]["analyzed"] != len(examples):
+            raise ValueError("Cloud model verification examples must all be analyzable")
+        normalized = [row["normalized_text"] for row in predictions["comments"]]
+        local_scores = [[row["class_probabilities"][service.config.label_mapping[label]] for label in service.classes]
+                        for row in predictions["comments"]]
+        np.testing.assert_allclose(model.predict_proba(normalized), local_scores)
         manifest["mlflow"] = {**training["mlflow"], "created_by": run.data.tags.get("mlflow.user"),
                               "model_download_and_prediction_verified": True}
+        manifest["prediction_service"] = {"model_sha256": training["model_sha256"],
+                                          "text_preprocessing": service.text_settings,
+                                          "cloud_class_scores_verified": True}
 
         database = PROJECT_ROOT / manager.config["mlflow"]["database"]
         snapshot = PROJECT_ROOT / "artifacts/experiment_tracking/mlflow.db"
@@ -131,7 +161,7 @@ def main():
         manifest_path = PROJECT_ROOT / "reports/s3_artifacts_manifest.json"
         write_json(manifest_path, manifest)
         client.upload_file(str(manifest_path), bucket, manifest_key)
-    print("All five stages and the MLflow model/database backup are verified on S3.")
+    print("All five stages, the review worksheet, and the MLflow model/database backup are verified on S3.")
 
 
 if __name__ == "__main__":
