@@ -1,0 +1,489 @@
+openapi: 3.1.0
+info:
+  title: Comment Lens serving API
+  version: 0.1.0-design
+  description: |
+    Proposed contract, not an implemented service. Authenticated users submit
+    public YouTube videos and receive owned references to asynchronous analyses.
+    Results sample latest top-level comments, not every comment on a video.
+    Live fetching requires recorded YouTube analytics-use approval.
+    Gateway-generated auth/throttle errors can use the gateway's native body.
+servers:
+  - url: https://api.example.com
+    description: Placeholder; replace with the deployed HTTPS origin.
+security:
+  - CognitoAccessToken: []
+tags:
+  - name: Analyses
+  - name: Models
+  - name: Health
+paths:
+  /v1/analyses:
+    post:
+      tags: [Analyses]
+      operationId: createAnalysis
+      summary: Create an owned analysis or join identical work
+      description: |
+        Requires analysis/write scope and a body no larger than 2048 bytes.
+        Replaying the same owner's key/body returns the original reference.
+        The same key with another canonical body returns 409. A completed fresh
+        cache hit returns 200; new or running shared work returns 202.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysisInput'
+            example:
+              video_url: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+              max_comments: 1000
+      responses:
+        '200':
+          description: Fresh completed work or terminal idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '202':
+          description: Accepted or joined nonterminal work
+          headers:
+            Location:
+              description: Relative owned status path
+              schema: {type: string}
+            Retry-After:
+              description: Suggested delay before the first status read, in seconds
+              schema: {type: integer, minimum: 1}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '410': {$ref: '#/components/responses/Expired'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /v1/analyses/{analysis_id}:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisId'
+    get:
+      tags: [Analyses]
+      operationId: getAnalysis
+      summary: Read an owned analysis status
+      description: Requires analysis/read scope. Failed jobs still return 200 with state FAILED.
+      responses:
+        '200':
+          description: Owned status; no comment payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '410': {$ref: '#/components/responses/Expired'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    delete:
+      tags: [Analyses]
+      operationId: deleteAnalysis
+      summary: Remove the owner's reference and history
+      description: |
+        Requires analysis/write scope. Does not cancel shared public work or
+        delete other owners' references. Previously issued download URLs can
+        remain valid for up to five minutes. Repeat deletion of an unknown or
+        foreign ID returns 404 without revealing ownership.
+      responses:
+        '204': {description: Owned reference removed}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '410': {$ref: '#/components/responses/Expired'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /v1/analyses/{analysis_id}/result:
+    parameters:
+      - $ref: '#/components/parameters/AnalysisId'
+    get:
+      tags: [Analyses]
+      operationId: getResultDownload
+      summary: Authorize a private S3 result download
+      description: |
+        Requires analysis/read scope. Available for SUCCEEDED and PARTIAL only.
+        Returns a descriptor, not the comment JSON. The downloaded JSON matches
+        components.schemas.AnalysisResult. Its URL expires no later than either
+        the owned reference or result and is never logged by the application.
+      responses:
+        '200':
+          description: Private download descriptor; use once and keep the result locally
+          headers:
+            Cache-Control:
+              schema: {type: string, const: no-store}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultDownload'
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '410': {$ref: '#/components/responses/Expired'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /v1/models/current:
+    get:
+      tags: [Models]
+      operationId: getCurrentModel
+      summary: Explain the currently selected serving release
+      description: Requires analysis/read scope; does not expose bucket paths or tracking credentials.
+      responses:
+        '200':
+          description: Current release and evaluation context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelDetails'
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /health/live:
+    get:
+      tags: [Health]
+      operationId: getLiveness
+      summary: Check that the API process can respond
+      description: Not a guarantee that YouTube, storage, or workers are ready.
+      security: []
+      responses:
+        '200':
+          description: Process alive
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: {type: string, const: ok}
+components:
+  securitySchemes:
+    CognitoAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Cognito access token; configure read/write scopes on the corresponding gateway routes.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated UUID, stable while retrying the same submission; retained for 24 hours per owner.
+      schema: {type: string, format: uuid}
+    AnalysisId:
+      name: analysis_id
+      in: path
+      required: true
+      description: Owner's opaque request UUID, not the shared work ID.
+      schema: {type: string, format: uuid}
+  responses:
+    Unauthorized:
+      description: Missing, invalid or expired access token; gateway body may differ.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    Forbidden:
+      description: Token lacks the route's required scope; gateway body may differ.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    NotFound:
+      description: Unknown, deleted, or foreign analysis reference.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    Conflict:
+      description: IDEMPOTENCY_CONFLICT, RESULT_NOT_READY, or ANALYSIS_FAILED, as appropriate to the route.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    Expired:
+      description: Owned reference or result expired; cleaned references eventually return 404.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    TooLarge:
+      description: Request body exceeds 2048 bytes.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    InvalidInput:
+      description: Invalid URL/limit or unsupported input fields.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    RateLimited:
+      description: User/global submission, active-reference or read limit exceeded; gateway body may differ.
+      headers:
+        Retry-After:
+          schema: {type: integer, minimum: 1}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    Unavailable:
+      description: SYSTEM_BUSY, YOUTUBE_QUOTA_EXHAUSTED, LIVE_ANALYSIS_DISABLED, or DEPENDENCY_UNAVAILABLE.
+      headers:
+        Retry-After:
+          schema: {type: integer, minimum: 1}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+  schemas:
+    Sha256:
+      type: string
+      pattern: '^[a-f0-9]{64}$'
+    AnalysisInput:
+      type: object
+      additionalProperties: false
+      required: [video_url]
+      properties:
+        video_url:
+          type: string
+          format: uri
+          maxLength: 1024
+          description: HTTPS YouTube watch/shorts/live or youtu.be URL; server validates supported host and 11-character video ID.
+        max_comments:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 1000
+    ModelReference:
+      type: object
+      additionalProperties: false
+      required: [release_id, sha256, preprocessing_sha256, review_confidence_threshold, result_schema_version]
+      properties:
+        release_id:
+          type: string
+          pattern: '^sr_[a-f0-9]{64}$'
+          description: Digest of model, preprocessing, code, threshold and schema release manifest.
+        sha256: {$ref: '#/components/schemas/Sha256'}
+        preprocessing_sha256: {$ref: '#/components/schemas/Sha256'}
+        review_confidence_threshold: {type: number, minimum: 0, maximum: 1}
+        result_schema_version: {type: integer, const: 1}
+    Sampling:
+      type: object
+      additionalProperties: false
+      required: [scope, order, include_replies, requested_max_comments, has_more, sample_start, sample_end]
+      properties:
+        scope: {type: string, const: public_top_level_comments}
+        order: {type: string, const: time}
+        include_replies: {type: boolean, const: false}
+        requested_max_comments: {type: integer, minimum: 1, maximum: 1000}
+        has_more:
+          type: [boolean, 'null']
+          description: Null until known; true when an additional page/item was available at the limit.
+        sample_start: {type: [string, 'null'], format: date-time}
+        sample_end: {type: [string, 'null'], format: date-time}
+    Progress:
+      type: object
+      additionalProperties: false
+      required: [fetched, duplicates_removed, analyzed, skipped]
+      properties:
+        fetched: {type: integer, minimum: 0}
+        duplicates_removed: {type: integer, minimum: 0}
+        analyzed: {type: integer, minimum: 0}
+        skipped: {type: integer, minimum: 0}
+    Failure:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryable]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        retryable: {type: boolean}
+    Analysis:
+      type: object
+      additionalProperties: false
+      required: [analysis_id, video_id, state, created_at, updated_at, deadline_at, expires_at, cache_hit, model, sampling, progress, result_available, partial_reason, failure]
+      properties:
+        analysis_id: {type: string, format: uuid}
+        video_id: {type: string, pattern: '^[A-Za-z0-9_-]{11}$'}
+        state:
+          type: string
+          enum: [QUEUED, FETCHING, INFERENCING, SAVING, SUCCEEDED, PARTIAL, FAILED]
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        deadline_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+        cache_hit:
+          type: boolean
+          description: True only when this owned reference was created from a fresh completed cache hit.
+        model: {$ref: '#/components/schemas/ModelReference'}
+        sampling: {$ref: '#/components/schemas/Sampling'}
+        progress: {$ref: '#/components/schemas/Progress'}
+        result_available: {type: boolean}
+        partial_reason: {type: [string, 'null']}
+        failure:
+          oneOf:
+            - {$ref: '#/components/schemas/Failure'}
+            - {type: 'null'}
+    ResultDownload:
+      type: object
+      additionalProperties: false
+      required: [url, expires_at, sha256, bytes, content_type, schema_version]
+      properties:
+        url: {type: string, format: uri, description: HTTPS private S3 presigned GET URL; treat as a temporary bearer credential.}
+        expires_at: {type: string, format: date-time}
+        sha256: {$ref: '#/components/schemas/Sha256'}
+        bytes: {type: integer, minimum: 1, maximum: 10485760}
+        content_type: {type: string, const: application/json}
+        schema_version: {type: integer, const: 1}
+    Video:
+      type: object
+      additionalProperties: false
+      required: [id, url, title, channel_title, published_at, total_comment_count]
+      properties:
+        id: {type: string, pattern: '^[A-Za-z0-9_-]{11}$'}
+        url: {type: string, format: uri}
+        title: {type: string}
+        channel_title: {type: string}
+        published_at: {type: string, format: date-time}
+        total_comment_count:
+          type: [integer, 'null']
+          minimum: 0
+          description: YouTube video statistic; may be absent and is not the sampled/analyzed denominator.
+    Summary:
+      type: object
+      additionalProperties: false
+      required: [received, analyzed, skipped, coverage, sentiment_counts, skipped_by_reason, needs_review]
+      properties:
+        received: {type: integer, minimum: 0, maximum: 1000}
+        analyzed: {type: integer, minimum: 0, maximum: 1000}
+        skipped: {type: integer, minimum: 0, maximum: 1000}
+        coverage: {type: number, minimum: 0, maximum: 1}
+        sentiment_counts:
+          type: object
+          additionalProperties: false
+          required: [Negative, Neutral, Positive]
+          properties:
+            Negative: {type: integer, minimum: 0}
+            Neutral: {type: integer, minimum: 0}
+            Positive: {type: integer, minimum: 0}
+        skipped_by_reason:
+          type: object
+          additionalProperties: false
+          required: [empty_text, no_known_features, text_too_long]
+          properties:
+            empty_text: {type: integer, minimum: 0}
+            no_known_features: {type: integer, minimum: 0}
+            text_too_long: {type: integer, minimum: 0}
+        needs_review: {type: integer, minimum: 0, maximum: 1000}
+    Comment:
+      type: object
+      additionalProperties: false
+      required: [index, id, author, published_at, likes, text, normalized_text, status, sentiment, sentiment_label, confidence, class_probabilities, needs_review, skipped_reason]
+      properties:
+        index: {type: integer, minimum: 0, maximum: 999}
+        id: {type: string}
+        author: {type: [string, 'null']}
+        published_at: {type: string, format: date-time}
+        likes: {type: integer, minimum: 0}
+        text: {type: [string, 'null'], maxLength: 5000}
+        normalized_text: {type: [string, 'null']}
+        status: {type: string, enum: [analyzed, skipped]}
+        sentiment: {type: [string, 'null'], enum: [Negative, Neutral, Positive, null]}
+        sentiment_label: {type: [integer, 'null'], enum: [0, 1, 2, null]}
+        confidence: {type: [number, 'null'], minimum: 0, maximum: 1}
+        class_probabilities:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [Negative, Neutral, Positive]
+              properties:
+                Negative: {type: number, minimum: 0, maximum: 1}
+                Neutral: {type: number, minimum: 0, maximum: 1}
+                Positive: {type: number, minimum: 0, maximum: 1}
+            - {type: 'null'}
+        needs_review: {type: boolean}
+        skipped_reason:
+          type: [string, 'null']
+          enum: [empty_text, no_known_features, text_too_long, null]
+    AnalysisResult:
+      type: object
+      additionalProperties: false
+      description: |
+        Shared public-sample JSON in S3; contains no user ownership identifiers.
+        Adapter invariants: received = len(comments) = analyzed + skipped;
+        class counts sum to analyzed; skip counts sum to skipped; analyzed rows
+        have three scores summing to one and skipped rows have null predictions.
+        This extends, rather than replaces, the existing prediction contract.
+      required: [schema_version, state, fetched_at, expires_at, video, sampling, duplicates_removed, model, confidence_definition, summary, partial_reason, comments]
+      properties:
+        schema_version: {type: integer, const: 1}
+        state: {type: string, enum: [SUCCEEDED, PARTIAL]}
+        fetched_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+        video: {$ref: '#/components/schemas/Video'}
+        sampling: {$ref: '#/components/schemas/Sampling'}
+        duplicates_removed: {type: integer, minimum: 0}
+        model: {$ref: '#/components/schemas/ModelReference'}
+        confidence_definition:
+          type: string
+          const: Highest class score, not calibrated correctness probability
+        summary: {$ref: '#/components/schemas/Summary'}
+        partial_reason: {type: [string, 'null']}
+        comments:
+          type: array
+          maxItems: 1000
+          items: {$ref: '#/components/schemas/Comment'}
+    ModelDetails:
+      type: object
+      additionalProperties: false
+      required: [model, type, labels, confidence_definition, evaluation]
+      properties:
+        model: {$ref: '#/components/schemas/ModelReference'}
+        type: {type: string, const: TF-IDF + LogisticRegression}
+        labels:
+          type: object
+          additionalProperties: false
+          required: ['0', '1', '2']
+          properties:
+            '0': {type: string, const: Negative}
+            '1': {type: string, const: Neutral}
+            '2': {type: string, const: Positive}
+        confidence_definition:
+          type: string
+          const: Highest class score, not calibrated correctness probability
+        evaluation:
+          type: object
+          additionalProperties: false
+          required: [test_accuracy, test_macro_f1, test_rows, labels_human_confirmed, context]
+          properties:
+            test_accuracy: {type: number, minimum: 0, maximum: 1}
+            test_macro_f1: {type: number, minimum: 0, maximum: 1}
+            test_rows: {type: integer, minimum: 1}
+            labels_human_confirmed: {type: boolean}
+            context:
+              type: string
+              description: Explain supplied-label agreement and outstanding label/domain validation; do not claim live accuracy.
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, retryable, request_id]
+          properties:
+            code:
+              type: string
+              enum: [UNAUTHORIZED, FORBIDDEN, NOT_FOUND, EXPIRED, INVALID_INPUT, REQUEST_TOO_LARGE, IDEMPOTENCY_CONFLICT, RESULT_NOT_READY, ANALYSIS_FAILED, RATE_LIMITED, ACTIVE_JOB_LIMIT, SYSTEM_BUSY, YOUTUBE_QUOTA_EXHAUSTED, LIVE_ANALYSIS_DISABLED, DEPENDENCY_UNAVAILABLE]
+            message: {type: string}
+            retryable: {type: boolean}
+            request_id: {type: string}
+            retry_after_seconds: {type: integer, minimum: 1}
+            reset_at: {type: string, format: date-time}

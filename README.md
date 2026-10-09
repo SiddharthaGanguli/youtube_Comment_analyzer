@@ -5,7 +5,15 @@ YouTube comment sentiment analysis with reproducible data and model pipelines.
 The Chrome extension design is in [extension/](extension/README.md): a small
 popup that opens a full dashboard tab. It currently uses clearly labeled sample
 comments, with sentiment charts, coverage, filters, comment details and CSV
-export. Live analysis and the AWS backend will be added after the design review.
+export. Live analysis and the AWS backend are the next implementation phase.
+
+The [serving system design](docs/system-design.md) targets 1,000 active users
+with separate API and model workers, bounded YouTube fetching, shared public
+results, durable jobs, and a low initial AWS cost. The
+[API contract](docs/backend-contract.yaml) and [backend plan](docs/backend-plan.md)
+are ready for implementation; the backend and deployment remain pending.
+Live YouTube sentiment analysis requires the analytics-use approval described
+in the design before it can be enabled.
 
 ## Run the pipeline
 

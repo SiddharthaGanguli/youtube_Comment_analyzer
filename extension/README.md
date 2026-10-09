@@ -72,6 +72,12 @@ complement the visual and keyboard review.
 
 ## Backend handoff
 
+The serving [system design](../docs/system-design.md),
+[HTTP/result contract](../docs/backend-contract.yaml), and
+[implementation plan](../docs/backend-plan.md) specify sign-in, job polling,
+private result downloads, latest top-level sampling and launch limits.
+They are specifications; the preview is not connected to a backend yet.
+
 Keep `demo-data.mjs` as the preview fixture when the backend is added. A real
 analysis response should supply the video's metadata, fetched/analyzed/skipped
 counts, sample period, model version, and comments. Each comment needs an ID,

@@ -1,0 +1,35 @@
+{
+  "measured_at": "2026-10-09",
+  "scope": "Local inference only; not a concurrent-user or AWS benchmark",
+  "model_sha256": "c4ea55bc939afb265f6103703799721fbaa994aa69607fa3ae30daec562395ad",
+  "model_bytes": 2323682,
+  "environment": {
+    "python": "3.12.13",
+    "os": "Windows-11-10.0.26200-SP0",
+    "logical_cpus": 24
+  },
+  "sample": {
+    "source": "First 1000 raw dataset CommentText rows",
+    "comments": 1000,
+    "mean_characters": 102.064
+  },
+  "inference": {
+    "batch_size": 256,
+    "native_thread_limit": 4,
+    "warmup_runs": 1,
+    "measured_runs": 20,
+    "load_seconds_excluding_imports": 0.8278358000025037,
+    "median_seconds_per_sample": 0.03543005000028643,
+    "p95_seconds_per_sample": 0.04338540000026114,
+    "p95_method": "nearest_rank",
+    "maximum_seconds_per_sample": 0.07947859999694629,
+    "rss_bytes_after_runs": 209551360,
+    "last_analyzed": 994,
+    "last_skipped": 6
+  },
+  "limitations": [
+    "Sequential repeated input; excludes Python import and container startup",
+    "Current machine and four native threads; differs from the proposed Lambda worker",
+    "No YouTube requests, queue, authentication, storage, or network load tested"
+  ]
+}

@@ -1,0 +1,112 @@
+# Design example only. No current application loads this file.
+# Move approved settings into typed serving configuration during backend work.
+environment: development
+region: us-east-1
+target_active_users: 1000
+monthly_budget_usd: null  # Choose before production deployment.
+
+youtube:
+  live_enabled: false
+  analytics_use_approved: false
+  approval_reference: null
+  api_key_secret_arn: null  # Secrets Manager reference, never an API key here.
+  visibility: public
+  order: time
+  text_format: plainText
+  include_replies: false
+  default_max_comments: 1000
+  maximum_comments: 1000
+  page_size: 100
+  maximum_http_attempts_per_call: 3
+  global_http_attempts_per_second: 5
+  project_daily_quota_units: 10000  # Example; verify the project's real quota.
+  working_quota_fraction: 0.8
+  full_sample_reserved_units: 33
+  quota_timezone: America/Los_Angeles
+
+api:
+  memory_mib: 512
+  timeout_seconds: 10
+  reserved_concurrency: 100
+  throttle_requests_per_second: 300
+  throttle_burst: 600
+  submission_requests_per_second: 20
+  submission_burst: 40
+  maximum_request_body_bytes: 2048
+  allowed_origins: []  # Exact published extension and explicit development origins.
+
+admission:
+  healthy_new_work_per_minute: 6
+  maximum_new_work_per_minute: 10
+  maximum_nonterminal_work: 200
+  user_submissions_per_minute: 3
+  user_reads_per_minute: 30
+  user_maximum_active_references: 2
+
+worker:
+  architecture: x86_64
+  python_version: '3.12'
+  memory_mib: 2048
+  timeout_seconds: 180
+  soft_deadline_seconds: 150
+  lease_seconds: 210
+  heartbeat_seconds: 30
+  reserved_concurrency: 10
+  sum_of_release_mapping_maximum_concurrency: 10
+  batch_size: 256
+  native_thread_limit: 1  # Requires a shared-service runtime override first.
+  review_confidence_threshold: 0.6
+  restore_with_dvc: false
+  maximum_comment_characters: 5000
+  maximum_result_bytes: 10485760
+
+queue:
+  type: standard
+  per_serving_release: true
+  event_batch_size: 1
+  event_batch_window_seconds: 0
+  visibility_timeout_seconds: 1080
+  maximum_receive_count: 5
+  report_batch_item_failures: true
+  job_deadline_seconds: 1800
+  reconciler_interval_seconds: 60
+  pending_outbox_retry_after_seconds: 30
+
+cache:
+  freshness_seconds: 900
+  result_retention_seconds: 86400
+  request_retention_seconds: 86400
+  idempotency_retention_seconds: 86400
+  download_url_seconds: 300
+  s3_cleanup_backstop_days: 7
+  force_refresh_enabled: false
+
+storage:
+  bucket: yt-comment-analyzer-main
+  serving_prefix: serving/development
+  # Existing DVC IAM permissions do not grant access to this new prefix.
+  table_name: null
+  public_access: false
+  encryption: AES256
+
+auth:
+  cognito_issuer: null
+  public_client_id: null
+  client_secret: null  # Public extension client: never configure a secret.
+  authorization_flow: authorization_code
+  pkce_method: S256
+  scopes: [analysis/read, analysis/write]
+  extension_id: null
+
+observability:
+  log_retention_days: 14
+  include_comment_text_in_logs: false
+  include_tokens_in_logs: false
+  queue_age_alarm_seconds: 60
+  dlq_alarm_message_count: 1
+
+client:
+  poll_schedule_seconds: [2, 5, 10]
+  poll_jitter: true
+  pause_polling_when_hidden: true
+  download_result_once: true
