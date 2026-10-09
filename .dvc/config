@@ -1,0 +1,9 @@
+[core]
+    analytics = false
+    autostage = false
+    remote = storage
+[cache]
+    type = copy
+['remote "storage"']
+    url = s3://yt-comment-analyzer-main/datasets/youtube-comments
+    region = us-east-1

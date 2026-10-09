@@ -1,0 +1,2 @@
+# DVC with Amazon S3 remote support
+dvc[s3]==3.67.1

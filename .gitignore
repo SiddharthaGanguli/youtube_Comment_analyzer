@@ -1,15 +1,29 @@
+# Runtime outputs
 logs/
 artifacts/
 
-data/raw/*
-data/processed/*
-data/model/*
-
-!data/raw/*.dvc
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-!data/model/.gitkeep
-
-venv/
-
+# Local datasets and derived data; keep folder markers and DVC metadata
+data/**
+!data/**/
+!data/**/.gitkeep
+!data/**/*.dvc
 dataset.csv
+
+# Python environments and caches
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Local environment settings
+.env
+.env.*
+!.env.example

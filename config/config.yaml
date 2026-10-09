@@ -1,0 +1,22 @@
+# Dataset metadata. Paths are relative to the repository root.
+# DVC storage settings belong in .dvc/config, not in this file.
+dataset:
+  name: Arshia82sbn/youtube-sentiment-dataset
+  source:
+    repository: https://huggingface.co/datasets/Arshia82sbn/youtube-sentiment-dataset
+    revision: 7561b9e5d8f8054d085e0dd50bb29b0fe2e8cb1e
+    url: https://huggingface.co/datasets/Arshia82sbn/youtube-sentiment-dataset/resolve/7561b9e5d8f8054d085e0dd50bb29b0fe2e8cb1e/youtube-comments-sentiment.csv
+    size_bytes: 445484444
+    sha256: 9090469dd235cffa05b7f2e551696d46fa064c16a8c1f77e76801476a462458b
+  raw_path: data/raw/youtube-comments-sentiment.csv
+  dvc_file: data/raw/youtube-comments-sentiment.csv.dvc
+  encoding: utf-8
+  columns:
+    text: CommentText
+    video_title: VideoTitle
+    sentiment: Sentiment
+    target: Sentiment_label
+  label_mapping:
+    0: Negative
+    1: Neutral
+    2: Positive

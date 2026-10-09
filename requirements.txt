@@ -1,8 +1,5 @@
-pandas
-numpy 
-seaborn 
-matplotlib
+-r requirements-eda.txt
 mlflow
-dvc 
+-r requirements-dvc.txt
 dagshub
 nltk
