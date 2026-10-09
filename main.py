@@ -7,10 +7,11 @@ from src.Sentiment_analysis.config.config import ConfigurationManager
 from src.Sentiment_analysis.pipeline.pipeline_01_data_ingestion import DataIngestionPipeline
 from src.Sentiment_analysis.pipeline.pipeline_02_data_validation import DataValidationPipeline
 from src.Sentiment_analysis.pipeline.pipeline_03_data_preprocessing import DataPreprocessingPipeline
+from src.Sentiment_analysis.pipeline.pipeline_04_model_training import ModelTrainingPipeline
 
 
 STAGES = {"ingestion": DataIngestionPipeline, "validation": DataValidationPipeline,
-          "preprocessing": DataPreprocessingPipeline}
+          "preprocessing": DataPreprocessingPipeline, "training": ModelTrainingPipeline}
 
 
 def main():

@@ -47,3 +47,8 @@ data_preprocessing:
   validation_file: artifacts/data_preprocessing/validation.csv
   test_file: artifacts/data_preprocessing/test.csv
   report_file: artifacts/data_preprocessing/preprocessing_report.json
+
+model_training:
+  root_dir: artifacts/model_training
+  model_file: artifacts/model_training/sentiment_model.joblib
+  report_file: artifacts/model_training/training_report.json

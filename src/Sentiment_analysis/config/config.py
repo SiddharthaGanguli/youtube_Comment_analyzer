@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from src.Sentiment_analysis.entity.entity import DataIngestionConfig, DataValidationConfig, DataPreprocessingConfig
+from src.Sentiment_analysis.entity.entity import (
+    DataIngestionConfig, DataValidationConfig, DataPreprocessingConfig, ModelTrainingConfig,
+)
 from src.Sentiment_analysis.utils.common import read_yaml
 
 
@@ -72,4 +74,20 @@ class ConfigurationManager:
             title_column=columns["video_title"], target_column=columns["target"],
             label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
             parameters=read_yaml(self.params_path)["data_preprocessing"],
+        )
+
+    def get_model_training_config(self):
+        dataset = self.config["dataset"]
+        settings = self.config["model_training"]
+        preprocessing = self.config["data_preprocessing"]
+        columns = dataset["columns"]
+        return ModelTrainingConfig(
+            train_file=self._path(preprocessing["train_file"]),
+            validation_file=self._path(preprocessing["validation_file"]),
+            preprocessing_report=self._path(preprocessing["report_file"]),
+            model_file=self._path(settings["model_file"]), report_file=self._path(settings["report_file"]),
+            encoding=dataset["encoding"], text_column=columns["text"],
+            title_column=columns["video_title"], target_column=columns["target"],
+            label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
+            parameters=read_yaml(self.params_path)["model_training"],
         )

@@ -6,3 +6,21 @@ data_preprocessing:
   test_size: 0.1
   unicode_normalization: NFKC
   language_policy: keep_all
+
+model_training:
+  random_state: 42
+  thread_limit: 4
+  tfidf:
+    max_features: 100000
+    ngram_range: [1, 2]
+    min_df: 3
+    max_df: 1.0
+    sublinear_tf: true
+    # Include contractions, punctuation, and emoji as well as Unicode words.
+    token_pattern: >-
+      (?u)\b\w+(?:['’]\w+)*\b|[^\w\s]
+  logistic_regression:
+    C: 1.0
+    solver: saga
+    max_iter: 300
+    tol: 0.001

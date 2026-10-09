@@ -1,7 +1,6 @@
 # YouTube Comment Analyzer
 
-YouTube comment sentiment analysis. The current DVC setup tracks the raw dataset;
-preprocessing and training stages will be added as the application is implemented.
+YouTube comment sentiment analysis with reproducible data and model pipelines.
 
 ## Run the pipeline
 
@@ -14,6 +13,7 @@ Run ingestion from the repository root:
 .\.venv\Scripts\python.exe main.py --stage ingestion
 .\.venv\Scripts\python.exe main.py --stage validation
 .\.venv\Scripts\python.exe main.py --stage preprocessing
+.\.venv\Scripts\python.exe main.py --stage training
 ```
 
 Ingestion verifies the configured file size and SHA-256. If the CSV is missing,
@@ -45,6 +45,14 @@ Install the pipeline dependencies before running preprocessing or training:
 uv pip install --python .venv/Scripts/python.exe -r requirements-pipeline.txt
 ```
 
+Training fits a single scikit-learn Pipeline containing TF-IDF and logistic
+regression. Vocabulary, IDF, and classifier weights are learned from training
+rows only. The validation split is scored after fitting; training never reads
+the test CSV. Hyperparameters live in `config/params.yaml`. The stage requires
+convergence and saves the fitted pipeline, label mapping, source checksums, and
+package versions in `artifacts/model_training/sentiment_model.joblib`, with a
+training report and a majority-class baseline alongside it.
+
 ## Python environment
 
 The project uses Python 3.12 in `.venv/`. VS Code's project settings point to
@@ -53,7 +61,7 @@ the repository root:
 
 ```powershell
 uv venv --python 3.12 .venv
-uv pip install --python .venv/Scripts/python.exe -r requirements-dvc.txt -r requirements-eda.txt
+uv pip install --python .venv/Scripts/python.exe -r requirements-dvc.txt -r requirements-eda.txt -r requirements-pipeline.txt
 ```
 
 To activate it in PowerShell:

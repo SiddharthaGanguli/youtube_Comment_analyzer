@@ -46,3 +46,18 @@ class DataPreprocessingConfig:
     target_column: str
     label_mapping: dict[int, str]
     parameters: dict
+
+
+@dataclass(frozen=True)
+class ModelTrainingConfig:
+    train_file: Path
+    validation_file: Path
+    preprocessing_report: Path
+    model_file: Path
+    report_file: Path
+    encoding: str
+    text_column: str
+    title_column: str
+    target_column: str
+    label_mapping: dict[int, str]
+    parameters: dict

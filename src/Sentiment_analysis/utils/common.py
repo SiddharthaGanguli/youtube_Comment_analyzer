@@ -50,3 +50,35 @@ def check_split_overlap(splits, text_column, title_column):
                 right_keys = comparison_key(right[column]) if column != "source_row" else right[column].astype(str)
                 if set(left_keys) & set(right_keys):
                     raise ValueError(f"{column} overlaps between {left_name} and {right_name}")
+
+
+def load_verified_split(path, metadata, encoding, text_column, title_column, target_column, labels):
+    if sha256_file(path) != metadata["sha256"]:
+        raise ValueError(f"Split checksum changed: {path}")
+    frame = read_comments(path, encoding)
+    required = {"source_row", text_column, title_column, target_column}
+    if not required.issubset(frame.columns) or len(frame) != metadata["rows"]:
+        raise ValueError(f"Split schema or row count changed: {path}")
+    numbers = pd.to_numeric(frame[target_column], errors="coerce")
+    if not numbers.isin(labels).all() or set(numbers) != set(labels):
+        raise ValueError(f"Invalid or missing classes in split: {path}")
+    if comparison_key(frame[text_column]).eq("").any() or comparison_key(frame[title_column]).eq("").any():
+        raise ValueError(f"Empty text or title in split: {path}")
+    if not frame.source_row.is_unique:
+        raise ValueError(f"Duplicate source rows in split: {path}")
+    frame[target_column] = numbers.astype(int)
+    return frame
+
+
+def classification_metrics(targets, predictions, labels, probabilities=None):
+    from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, log_loss
+
+    metrics = {
+        "accuracy": float(accuracy_score(targets, predictions)),
+        "balanced_accuracy": float(balanced_accuracy_score(targets, predictions)),
+        "f1_macro": float(f1_score(targets, predictions, labels=labels, average="macro", zero_division=0)),
+        "f1_weighted": float(f1_score(targets, predictions, labels=labels, average="weighted", zero_division=0)),
+    }
+    if probabilities is not None:
+        metrics["log_loss"] = float(log_loss(targets, probabilities, labels=labels))
+    return metrics
