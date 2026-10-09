@@ -27,3 +27,5 @@ jobs:
         env:
           MPLCONFIGDIR: ${{ runner.temp }}/matplotlib
         run: python -m unittest discover -s tests -v
+      - name: Check extension behavior
+        run: node --test extension/tests/lib.test.mjs

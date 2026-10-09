@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Comment Lens</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="popup.mjs"></script>
+</head>
+<body class="popup">
+  <header class="popup-header"><a class="brand" id="brand-link" href="dashboard.html"><span class="brand-icon" aria-hidden="true">▰</span> Comment Lens</a><span class="badge preview">Preview</span></header>
+  <main>
+    <div class="popup-art" aria-hidden="true"><span class="bubble purple">☺</span><span class="bubble green">♡</span><span class="bubble coral">…</span></div>
+    <h1>Read the room.</h1>
+    <p class="muted">See how your viewers feel. Explore the conversation in one clear dashboard.</p>
+    <div class="current-video"><span class="eyebrow">CURRENT VIDEO</span><p id="current-video">Open a YouTube video, or paste its link below.</p></div>
+    <form id="popup-form">
+      <label for="video-url">YouTube video link <span class="muted">(optional)</span></label>
+      <input id="video-url" type="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
+      <p id="url-error" class="error" role="alert" hidden></p>
+      <button class="button primary full" type="submit">Open dashboard <span aria-hidden="true">↗</span></button>
+    </form>
+    <button id="try-demo" class="text-button full" type="button">Explore the demo</button>
+    <p class="popup-note">Design preview with sample comments.<br>Live analysis will be connected next.</p>
+  </main>
+</body>
+</html>

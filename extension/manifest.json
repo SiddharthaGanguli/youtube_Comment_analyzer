@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Comment Lens — YouTube Comment Analyzer",
+  "version": "0.1.0",
+  "description": "Preview a clear dashboard for YouTube comment sentiment and comment exploration.",
+  "permissions": ["activeTab"],
+  "action": {
+    "default_title": "Open Comment Lens",
+    "default_popup": "popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none';"
+  }
+}

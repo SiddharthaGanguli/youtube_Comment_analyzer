@@ -2,6 +2,11 @@
 
 YouTube comment sentiment analysis with reproducible data and model pipelines.
 
+The Chrome extension design is in [extension/](extension/README.md): a small
+popup that opens a full dashboard tab. It currently uses clearly labeled sample
+comments, with sentiment charts, coverage, filters, comment details and CSV
+export. Live analysis and the AWS backend will be added after the design review.
+
 ## Run the pipeline
 
 Each stage follows `config.yaml` → typed configuration in `entity.py` →
