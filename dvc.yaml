@@ -13,3 +13,18 @@ stages:
       - data/raw/youtube-comments-sentiment.csv
     outs:
       - artifacts/data_ingestion
+  validation:
+    cmd: python main.py --stage validation
+    deps:
+      - main.py
+      - config/config.yaml
+      - src/Sentiment_analysis/config/config.py
+      - src/Sentiment_analysis/entity/entity.py
+      - src/Sentiment_analysis/utils/common.py
+      - src/Sentiment_analysis/components/data_validation.py
+      - src/Sentiment_analysis/pipeline/pipeline_02_data_validation.py
+      - logging_/logger_.py
+      - data/raw/youtube-comments-sentiment.csv
+      - artifacts/data_ingestion
+    outs:
+      - artifacts/data_validation

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.Sentiment_analysis.entity.entity import DataIngestionConfig
+from src.Sentiment_analysis.entity.entity import DataIngestionConfig, DataValidationConfig
 from src.Sentiment_analysis.utils.common import read_yaml
 
 
@@ -34,4 +34,23 @@ class ConfigurationManager:
             dataset_name=dataset["name"],
             source_revision=dataset["source"]["revision"],
             restore_with_dvc=bool(settings["restore_with_dvc"]),
+        )
+
+    def get_data_validation_config(self):
+        dataset = self.config["dataset"]
+        settings = self.config["data_validation"]
+        columns = dataset["columns"]
+        return DataValidationConfig(
+            raw_data_file=self._path(dataset["raw_path"]),
+            ingestion_report=self._path(self.config["data_ingestion"]["report_file"]),
+            report_file=self._path(settings["report_file"]),
+            quarantine_file=self._path(settings["quarantine_file"]),
+            expected_sha256=dataset["source"]["sha256"],
+            encoding=dataset["encoding"],
+            required_columns=tuple(settings["required_columns"]),
+            text_column=columns["text"],
+            title_column=columns["video_title"],
+            sentiment_column=columns["sentiment"],
+            target_column=columns["target"],
+            label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
         )

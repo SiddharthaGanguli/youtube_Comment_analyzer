@@ -12,6 +12,7 @@ Run ingestion from the repository root:
 
 ```powershell
 .\.venv\Scripts\python.exe main.py --stage ingestion
+.\.venv\Scripts\python.exe main.py --stage validation
 ```
 
 Ingestion verifies the configured file size and SHA-256. If the CSV is missing,
@@ -22,6 +23,12 @@ verification rather than being overwritten. Run the stage checks with:
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
+
+Validation checks the source checksum, required columns, allowed numeric labels,
+and agreement with the text labels. Structural failures stop the stage and write
+a failed report. Empty comments/titles and conflicting title/comment label groups
+are listed in `artifacts/data_validation/quarantine_rows.csv` for preprocessing
+to exclude. Exact duplicate rows are counted for the next stage to remove.
 
 ## Python environment
 

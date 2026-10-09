@@ -13,3 +13,19 @@ class DataIngestionConfig:
     dataset_name: str
     source_revision: str
     restore_with_dvc: bool
+
+
+@dataclass(frozen=True)
+class DataValidationConfig:
+    raw_data_file: Path
+    ingestion_report: Path
+    report_file: Path
+    quarantine_file: Path
+    expected_sha256: str
+    encoding: str
+    required_columns: tuple[str, ...]
+    text_column: str
+    title_column: str
+    sentiment_column: str
+    target_column: str
+    label_mapping: dict[int, str]

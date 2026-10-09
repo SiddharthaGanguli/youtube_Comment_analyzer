@@ -26,3 +26,17 @@ data_ingestion:
   root_dir: artifacts/data_ingestion
   report_file: artifacts/data_ingestion/ingestion_report.json
   restore_with_dvc: true
+
+data_validation:
+  root_dir: artifacts/data_validation
+  report_file: artifacts/data_validation/validation_report.json
+  quarantine_file: artifacts/data_validation/quarantine_rows.csv
+  required_columns:
+    - VideoTitle
+    - CommentText
+    - Sentiment
+    - Sentiment_label
+    - clean_comment_text
+    - tokens_comment_text
+    - clean_title
+    - token_title
