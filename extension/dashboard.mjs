@@ -68,14 +68,17 @@ function renderTrend() {
 }
 
 function renderFilters() {
+  const focusedLabel = document.activeElement?.dataset.sentiment;
   $(".filters").replaceChildren();
   for (const label of ["All", ...LABELS]) {
     const button = element("button", `filter${state.sentiment === label ? " active" : ""}`, label);
     button.type = "button";
+    button.dataset.sentiment = label;
     button.append(element("span", "", label === "All" ? summary.total : summary.counts[label]));
     button.setAttribute("aria-pressed", String(state.sentiment === label));
     button.addEventListener("click", () => { state.sentiment = label; state.page = 1; renderFilters(); renderComments(); });
     $(".filters").append(button);
+    if (focusedLabel === label) button.focus({ preventScroll: true });
   }
 }
 
@@ -197,7 +200,7 @@ for (const link of document.querySelectorAll(".nav-link")) {
     for (const sibling of document.querySelectorAll(".nav-link")) {
       sibling.classList.remove("active"); sibling.removeAttribute("aria-current");
     }
-    link.classList.add("active"); link.setAttribute("aria-current", "page");
+    link.classList.add("active"); link.setAttribute("aria-current", "location");
   });
 }
 
