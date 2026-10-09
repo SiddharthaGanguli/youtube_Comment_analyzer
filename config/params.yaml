@@ -24,3 +24,7 @@ model_training:
     solver: saga
     max_iter: 300
     tol: 0.001
+
+model_evaluation:
+  random_state: 42
+  error_sample_size: 100

@@ -52,3 +52,12 @@ model_training:
   root_dir: artifacts/model_training
   model_file: artifacts/model_training/sentiment_model.joblib
   report_file: artifacts/model_training/training_report.json
+
+model_evaluation:
+  root_dir: artifacts/model_evaluation
+  report_file: artifacts/model_evaluation/evaluation_report.json
+  metrics_file: reports/evaluation_metrics.json
+  classification_report_file: artifacts/model_evaluation/classification_report.json
+  confusion_matrix_csv: artifacts/model_evaluation/confusion_matrix.csv
+  confusion_matrix_plot: artifacts/model_evaluation/confusion_matrix.png
+  error_sample_file: artifacts/model_evaluation/error_sample.csv

@@ -8,10 +8,12 @@ from src.Sentiment_analysis.pipeline.pipeline_01_data_ingestion import DataInges
 from src.Sentiment_analysis.pipeline.pipeline_02_data_validation import DataValidationPipeline
 from src.Sentiment_analysis.pipeline.pipeline_03_data_preprocessing import DataPreprocessingPipeline
 from src.Sentiment_analysis.pipeline.pipeline_04_model_training import ModelTrainingPipeline
+from src.Sentiment_analysis.pipeline.pipeline_05_model_evaluation import ModelEvaluationPipeline
 
 
 STAGES = {"ingestion": DataIngestionPipeline, "validation": DataValidationPipeline,
-          "preprocessing": DataPreprocessingPipeline, "training": ModelTrainingPipeline}
+          "preprocessing": DataPreprocessingPipeline, "training": ModelTrainingPipeline,
+          "evaluation": ModelEvaluationPipeline}
 
 
 def main():

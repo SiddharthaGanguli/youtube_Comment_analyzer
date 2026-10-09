@@ -7,13 +7,14 @@ YouTube comment sentiment analysis with reproducible data and model pipelines.
 Each stage follows `config.yaml` → typed configuration in `entity.py` →
 `ConfigurationManager` → component → pipeline → `main.py`.
 
-Run ingestion from the repository root:
+Run individual stages from the repository root:
 
 ```powershell
 .\.venv\Scripts\python.exe main.py --stage ingestion
 .\.venv\Scripts\python.exe main.py --stage validation
 .\.venv\Scripts\python.exe main.py --stage preprocessing
 .\.venv\Scripts\python.exe main.py --stage training
+.\.venv\Scripts\python.exe main.py --stage evaluation
 ```
 
 Ingestion verifies the configured file size and SHA-256. If the CSV is missing,
@@ -52,6 +53,52 @@ the test CSV. Hyperparameters live in `config/params.yaml`. The stage requires
 convergence and saves the fitted pipeline, label mapping, source checksums, and
 package versions in `artifacts/model_training/sentiment_model.joblib`, with a
 training report and a majority-class baseline alongside it.
+
+Evaluation uses the test split after training. It verifies the model and split
+checksums and checks all splits again for overlap. Accuracy, balanced accuracy,
+macro/weighted F1, log loss, and the training-majority baseline are written to
+`reports/evaluation_metrics.json`. The per-class report, confusion matrix, and a
+100-row sample of misclassified comments live under `artifacts/model_evaluation/`.
+These scores measure agreement with the supplied labels; manual label review is
+still pending.
+
+The first full run used 793,424 training rows, 97,335 validation rows, and 103,653
+test rows, with zero title/comment/source-row overlap across splits.
+
+| Metric | Validation | Test |
+| --- | --- | --- |
+| Accuracy | 70.83% | 71.59% |
+| Macro F1 | 70.89% | 71.69% |
+| Majority-class accuracy | 34.94% | 34.01% |
+
+Run all five stages in sequence:
+
+```powershell
+.\.venv\Scripts\python.exe main.py --stage all
+```
+
+For DVC to rerun only stages whose dependencies changed, activate the environment
+and reproduce the pipeline:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m dvc repro
+python -m dvc metrics show
+```
+
+`dvc.yaml` defines the dependencies and artifacts. Commit it together with
+`dvc.lock` and the metrics JSON. Datasets, split CSVs, model binaries, and logs are
+excluded from Git. The new pipeline artifacts are cached locally by DVC;
+`python -m dvc push` can publish those artifacts to the configured S3 remote.
+
+GitHub Actions runs the stage checks on small fixtures without downloading the
+full dataset or using AWS credentials. They cover corrupted inputs, inconsistent
+labels, quarantine handling, split overlap, held-out vocabulary, persisted models,
+and test evaluation.
+
+The baseline uses [TF-IDF](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html)
+and [logistic regression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html)
+inside a Pipeline, following scikit-learn's guidance on [preventing data leakage](https://scikit-learn.org/stable/common_pitfalls.html#data-leakage).
 
 ## Python environment
 
@@ -133,9 +180,8 @@ The default remote is `storage`, at
 `s3://yt-comment-analyzer-main/datasets/youtube-comments` in `us-east-1`.
 Local tracking and cache operations work. Check cloud synchronization with
 `dvc status --cloud`; the IAM access described below is required for the remote.
-The full raw dataset has been uploaded with DVC. Cloud verification reports
-that the local cache and remote `storage` are in sync. DVC stores the remote
-object by its hash under `files/md5/`; `dvc pull` restores it to the CSV path
+The full raw dataset has been uploaded with DVC. DVC stores the remote
+object by its hash under `files/md5/`; a targeted `dvc pull` restores it to the CSV path
 recorded in `data/raw/youtube-comments-sentiment.csv.dvc`.
 
 ## Local DVC commands (PowerShell)
@@ -190,8 +236,8 @@ After access is granted, check the remote and upload:
 ```powershell
 .\.venv\Scripts\python.exe -m dvc status --cloud
 .\.venv\Scripts\python.exe -m dvc push
-# On another checkout, restore the data with:
-.\.venv\Scripts\python.exe -m dvc pull
+# On another checkout, restore the raw source before reproducing the pipeline:
+.\.venv\Scripts\python.exe -m dvc pull data/raw/youtube-comments-sentiment.csv.dvc
 ```
 
 These examples follow the [DVC Amazon S3 documentation](https://dvc.org/doc/user-guide/data-management/remote-storage/amazon-s3).

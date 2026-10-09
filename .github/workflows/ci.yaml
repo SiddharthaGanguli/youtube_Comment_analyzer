@@ -1,0 +1,28 @@
+name: Pipeline checks
+
+"on": [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MPLCONFIGDIR: ${{ runner.temp }}/matplotlib
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-eda.txt
+            requirements-pipeline.txt
+      - name: Install notebook and pipeline dependencies
+        run: python -m pip install -r requirements-eda.txt -r requirements-pipeline.txt
+      - name: Check stage behavior on small fixtures
+        run: python -m unittest discover -s tests -v

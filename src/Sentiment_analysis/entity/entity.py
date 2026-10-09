@@ -61,3 +61,25 @@ class ModelTrainingConfig:
     target_column: str
     label_mapping: dict[int, str]
     parameters: dict
+
+
+@dataclass(frozen=True)
+class ModelEvaluationConfig:
+    train_file: Path
+    validation_file: Path
+    test_file: Path
+    preprocessing_report: Path
+    model_file: Path
+    training_report: Path
+    report_file: Path
+    metrics_file: Path
+    classification_report_file: Path
+    confusion_matrix_csv: Path
+    confusion_matrix_plot: Path
+    error_sample_file: Path
+    encoding: str
+    text_column: str
+    title_column: str
+    target_column: str
+    label_mapping: dict[int, str]
+    parameters: dict

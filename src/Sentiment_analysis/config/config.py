@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from src.Sentiment_analysis.entity.entity import (
-    DataIngestionConfig, DataValidationConfig, DataPreprocessingConfig, ModelTrainingConfig,
+    DataIngestionConfig, DataValidationConfig, DataPreprocessingConfig, ModelTrainingConfig, ModelEvaluationConfig,
 )
 from src.Sentiment_analysis.utils.common import read_yaml
 
@@ -90,4 +90,27 @@ class ConfigurationManager:
             title_column=columns["video_title"], target_column=columns["target"],
             label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
             parameters=read_yaml(self.params_path)["model_training"],
+        )
+
+    def get_model_evaluation_config(self):
+        dataset = self.config["dataset"]
+        settings = self.config["model_evaluation"]
+        preprocessing = self.config["data_preprocessing"]
+        training = self.config["model_training"]
+        columns = dataset["columns"]
+        return ModelEvaluationConfig(
+            train_file=self._path(preprocessing["train_file"]),
+            validation_file=self._path(preprocessing["validation_file"]),
+            test_file=self._path(preprocessing["test_file"]),
+            preprocessing_report=self._path(preprocessing["report_file"]),
+            model_file=self._path(training["model_file"]), training_report=self._path(training["report_file"]),
+            report_file=self._path(settings["report_file"]), metrics_file=self._path(settings["metrics_file"]),
+            classification_report_file=self._path(settings["classification_report_file"]),
+            confusion_matrix_csv=self._path(settings["confusion_matrix_csv"]),
+            confusion_matrix_plot=self._path(settings["confusion_matrix_plot"]),
+            error_sample_file=self._path(settings["error_sample_file"]),
+            encoding=dataset["encoding"], text_column=columns["text"], title_column=columns["video_title"],
+            target_column=columns["target"],
+            label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
+            parameters=read_yaml(self.params_path)["model_evaluation"],
         )

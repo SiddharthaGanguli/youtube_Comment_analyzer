@@ -63,3 +63,24 @@ stages:
       - artifacts/data_preprocessing/preprocessing_report.json
     outs:
       - artifacts/model_training
+  evaluation:
+    cmd: python main.py --stage evaluation
+    deps:
+      - main.py
+      - config/config.yaml
+      - config/params.yaml
+      - requirements-pipeline.txt
+      - requirements-eda.txt
+      - src/Sentiment_analysis/config/config.py
+      - src/Sentiment_analysis/entity/entity.py
+      - src/Sentiment_analysis/utils/common.py
+      - src/Sentiment_analysis/components/model_evaluation.py
+      - src/Sentiment_analysis/pipeline/pipeline_05_model_evaluation.py
+      - logging_/logger_.py
+      - artifacts/data_preprocessing
+      - artifacts/model_training
+    outs:
+      - artifacts/model_evaluation
+    metrics:
+      - reports/evaluation_metrics.json:
+          cache: false
