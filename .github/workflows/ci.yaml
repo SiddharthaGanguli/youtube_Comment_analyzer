@@ -9,8 +9,6 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      MPLCONFIGDIR: ${{ runner.temp }}/matplotlib
     steps:
       - uses: actions/checkout@v7
         with:
@@ -25,4 +23,6 @@ jobs:
       - name: Install notebook and pipeline dependencies
         run: python -m pip install -r requirements-eda.txt -r requirements-pipeline.txt
       - name: Check stage behavior on small fixtures
+        env:
+          MPLCONFIGDIR: ${{ runner.temp }}/matplotlib
         run: python -m unittest discover -s tests -v
