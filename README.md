@@ -88,8 +88,63 @@ python -m dvc metrics show
 
 `dvc.yaml` defines the dependencies and artifacts. Commit it together with
 `dvc.lock` and the metrics JSON. Datasets, split CSVs, model binaries, and logs are
-excluded from Git. The new pipeline artifacts are cached locally by DVC;
-`python -m dvc push` can publish those artifacts to the configured S3 remote.
+excluded from Git. All five stages are uploaded to the configured S3 remote.
+DVC stores the objects by hash; `dvc.lock` maps those objects back to each stage
+and its files. Use the verified synchronization command below after a new run.
+
+## MLflow experiments and stage artifacts
+
+Training explicitly logs hyperparameters, validation metrics, the majority
+baseline, package requirements, source snapshots, and a reloadable model.
+Evaluation resumes that training run and adds test metrics, the confusion matrix,
+class report, and error sample. A failed fit, evaluation, or artifact upload fails
+the stage instead of reporting success. The test set is only read by evaluation.
+
+Settings are in the `mlflow` section of `config/config.yaml`. Run metadata lives
+in the ignored `.mlflow/mlflow.db` SQLite database. Model and report artifacts
+are uploaded directly to
+`s3://yt-comment-analyzer-main/datasets/youtube-comments/mlflow`.
+The tracking server is local; an AWS-hosted server is a later deployment step.
+
+```powershell
+uv pip install --python .venv/Scripts/python.exe -r requirements-pipeline.txt -r requirements-tracking.txt -r requirements-dvc.txt
+.\.venv\Scripts\python.exe scripts/mlflow_ui.py
+```
+
+Open **http://127.0.0.1:5000**, choose `youtube-comment-sentiment`, then open a run
+to compare parameters, validation/test scores, models, and artifacts. Keep that
+terminal running while using the UI.
+
+After `dvc repro`, synchronize and verify stage artifacts:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/sync_artifacts.py
+.\.venv\Scripts\python.exe -m dvc status --cloud
+```
+
+The sync script pushes ingestion, validation, preprocessing, training, and
+evaluation separately. It downloads the remote DVC objects to check their sizes
+and MD5 hashes, then reloads the MLflow model from S3 and checks its predictions
+against the local model. It also uploads a consistent SQLite database backup
+and the matching `dvc.lock`. `reports/s3_artifacts_manifest.json` records the
+stage/file paths, verified S3 locations, run ID, and database backup URI. The
+manifest is stored on S3 as well, under `manifests/<dvc-lock-sha256>/`.
+
+To recover run history on another machine, download the database backup named
+in that manifest into `.mlflow/mlflow.db` while the tracking server is stopped.
+Keep the same experiment artifact location; the models and reports remain on S3.
+Run the UI script on the restored database. A moved checkout should retrain before
+resuming evaluation because training reports record the original tracking URI.
+
+MLflow/boto3 use an AWS profile, environment credentials, or the normal deployed
+IAM role. On this machine, the helper can also read the ignored
+`.dvc/config.local` credentials into the process temporarily. Credentials are
+never logged as experiment parameters or included in the S3 manifest.
+Local tests use a temporary SQLite database and local artifact directory, with
+no S3 access. The integration check covers model loading through both sklearn
+and MLflow's serving interface, shared training/evaluation run IDs, and failed
+evaluation status. This setup follows the [MLflow tracking documentation](https://mlflow.org/docs/latest/tracking/)
+and [scikit-learn model flavor documentation](https://mlflow.org/docs/latest/api_reference/python_api/mlflow.sklearn.html).
 
 GitHub Actions runs the stage checks on small fixtures without downloading the
 full dataset or using AWS credentials. They cover corrupted inputs, inconsistent
@@ -108,7 +163,7 @@ the repository root:
 
 ```powershell
 uv venv --python 3.12 .venv
-uv pip install --python .venv/Scripts/python.exe -r requirements-dvc.txt -r requirements-eda.txt -r requirements-pipeline.txt
+uv pip install --python .venv/Scripts/python.exe -r requirements-dvc.txt -r requirements-eda.txt -r requirements-pipeline.txt -r requirements-tracking.txt
 ```
 
 To activate it in PowerShell:
@@ -171,8 +226,8 @@ The raw dataset is never modified.
 
 The first audit found 1,032,225 rows, 12,241 exact duplicate rows, and 705
 title/comment pairs with conflicting labels. The supplied cleaned text is empty
-for 31,064 nonempty raw comments. We will review these findings and the manual
-sample before implementing ingestion, validation, or preprocessing.
+for 31,064 nonempty raw comments. These findings inform the validation and
+preprocessing rules; the manual review worksheet still needs your labels.
 
 ## DVC storage
 

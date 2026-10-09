@@ -49,6 +49,15 @@ class DataPreprocessingConfig:
 
 
 @dataclass(frozen=True)
+class MLflowConfig:
+    project_root: Path
+    tracking_uri: str
+    experiment_name: str
+    artifact_location: str
+    run_name: str
+
+
+@dataclass(frozen=True)
 class ModelTrainingConfig:
     train_file: Path
     validation_file: Path
@@ -61,6 +70,7 @@ class ModelTrainingConfig:
     target_column: str
     label_mapping: dict[int, str]
     parameters: dict
+    mlflow: MLflowConfig | None = None
 
 
 @dataclass(frozen=True)
@@ -83,3 +93,4 @@ class ModelEvaluationConfig:
     target_column: str
     label_mapping: dict[int, str]
     parameters: dict
+    mlflow: MLflowConfig | None = None

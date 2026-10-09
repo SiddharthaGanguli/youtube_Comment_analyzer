@@ -5,8 +5,8 @@ stages:
     deps:
     - path: config/config.yaml
       hash: md5
-      md5: f7a7708bf91254492871a9413a24a407
-      size: 2425
+      md5: dfb93db844ae45764103a0f808d10907
+      size: 2730
     - path: data/raw/youtube-comments-sentiment.csv
       hash: md5
       md5: 140c4ad50348b2b04fc6c112819c517e
@@ -25,12 +25,12 @@ stages:
       size: 2171
     - path: src/Sentiment_analysis/config/config.py
       hash: md5
-      md5: 3755bfd41f05dcf772a69624ac950f2e
-      size: 6036
+      md5: 887d93ff11458847fb92d51e453bf60e
+      size: 6714
     - path: src/Sentiment_analysis/entity/entity.py
       hash: md5
-      md5: 3c1b3c33503b06d457f71bced4495bd6
-      size: 1876
+      md5: 3bcb34ab50618873a0c3bca125ed8da5
+      size: 2115
     - path: src/Sentiment_analysis/pipeline/pipeline_01_data_ingestion.py
       hash: md5
       md5: b86c300808a1e15ec8844b08c5ec320d
@@ -55,8 +55,8 @@ stages:
       nfiles: 1
     - path: config/config.yaml
       hash: md5
-      md5: f7a7708bf91254492871a9413a24a407
-      size: 2425
+      md5: dfb93db844ae45764103a0f808d10907
+      size: 2730
     - path: data/raw/youtube-comments-sentiment.csv
       hash: md5
       md5: 140c4ad50348b2b04fc6c112819c517e
@@ -75,12 +75,12 @@ stages:
       size: 4979
     - path: src/Sentiment_analysis/config/config.py
       hash: md5
-      md5: 3755bfd41f05dcf772a69624ac950f2e
-      size: 6036
+      md5: 887d93ff11458847fb92d51e453bf60e
+      size: 6714
     - path: src/Sentiment_analysis/entity/entity.py
       hash: md5
-      md5: 3c1b3c33503b06d457f71bced4495bd6
-      size: 1876
+      md5: 3bcb34ab50618873a0c3bca125ed8da5
+      size: 2115
     - path: src/Sentiment_analysis/pipeline/pipeline_02_data_validation.py
       hash: md5
       md5: 9e3b542459ea886adb4283e4e802a438
@@ -105,8 +105,8 @@ stages:
       nfiles: 2
     - path: config/config.yaml
       hash: md5
-      md5: f7a7708bf91254492871a9413a24a407
-      size: 2425
+      md5: dfb93db844ae45764103a0f808d10907
+      size: 2730
     - path: config/params.yaml
       hash: md5
       md5: d2a1b028dd2a2c655de636fe9ce37ee2
@@ -133,12 +133,12 @@ stages:
       size: 7349
     - path: src/Sentiment_analysis/config/config.py
       hash: md5
-      md5: 3755bfd41f05dcf772a69624ac950f2e
-      size: 6036
+      md5: 887d93ff11458847fb92d51e453bf60e
+      size: 6714
     - path: src/Sentiment_analysis/entity/entity.py
       hash: md5
-      md5: 3c1b3c33503b06d457f71bced4495bd6
-      size: 1876
+      md5: 3bcb34ab50618873a0c3bca125ed8da5
+      size: 2115
     - path: src/Sentiment_analysis/pipeline/pipeline_03_data_preprocessing.py
       hash: md5
       md5: 8353239c26683d40fc3135811a64a57d
@@ -170,8 +170,8 @@ stages:
       size: 18049114
     - path: config/config.yaml
       hash: md5
-      md5: f7a7708bf91254492871a9413a24a407
-      size: 2425
+      md5: dfb93db844ae45764103a0f808d10907
+      size: 2730
     - path: config/params.yaml
       hash: md5
       md5: d2a1b028dd2a2c655de636fe9ce37ee2
@@ -188,31 +188,43 @@ stages:
       hash: md5
       md5: 00120557b0bf1b433def73b08eef5051
       size: 140
+    - path: requirements-tracking.txt
+      hash: md5
+      md5: 196018bd7103b63b645d97fecd64ee9c
+      size: 90
     - path: src/Sentiment_analysis/components/model_training.py
       hash: md5
-      md5: 410a0d23a45164d406859be75125653a
-      size: 5425
+      md5: 623c113da31e8342cede2b345ada8a93
+      size: 5971
     - path: src/Sentiment_analysis/config/config.py
       hash: md5
-      md5: 3755bfd41f05dcf772a69624ac950f2e
-      size: 6036
+      md5: 887d93ff11458847fb92d51e453bf60e
+      size: 6714
     - path: src/Sentiment_analysis/entity/entity.py
       hash: md5
-      md5: 3c1b3c33503b06d457f71bced4495bd6
-      size: 1876
+      md5: 3bcb34ab50618873a0c3bca125ed8da5
+      size: 2115
     - path: src/Sentiment_analysis/pipeline/pipeline_04_model_training.py
       hash: md5
       md5: 7c4e7b43de1c2872cf01af5c7479a65f
       size: 396
+    - path: src/Sentiment_analysis/utils/aws_credentials.py
+      hash: md5
+      md5: 77d7edb045102c37b03f69238711341d
+      size: 1751
     - path: src/Sentiment_analysis/utils/common.py
       hash: md5
       md5: 90c2ddb2c9c4e2f3c9379f9dbb8fed14
       size: 3702
+    - path: src/Sentiment_analysis/utils/experiment_tracking.py
+      hash: md5
+      md5: e4b3dca66667677beddd262a8b817c3f
+      size: 7676
     outs:
     - path: artifacts/model_training
       hash: md5
-      md5: 5f380a0bd634d07c45f66e22d2b93e82.dir
-      size: 2325143
+      md5: b36c8a017f3dde1305b6136111b93c31.dir
+      size: 2325522
       nfiles: 2
   evaluation:
     cmd: python main.py --stage evaluation
@@ -224,13 +236,13 @@ stages:
       nfiles: 4
     - path: artifacts/model_training
       hash: md5
-      md5: 5f380a0bd634d07c45f66e22d2b93e82.dir
-      size: 2325143
+      md5: b36c8a017f3dde1305b6136111b93c31.dir
+      size: 2325522
       nfiles: 2
     - path: config/config.yaml
       hash: md5
-      md5: f7a7708bf91254492871a9413a24a407
-      size: 2425
+      md5: dfb93db844ae45764103a0f808d10907
+      size: 2730
     - path: config/params.yaml
       hash: md5
       md5: d2a1b028dd2a2c655de636fe9ce37ee2
@@ -251,31 +263,43 @@ stages:
       hash: md5
       md5: 00120557b0bf1b433def73b08eef5051
       size: 140
+    - path: requirements-tracking.txt
+      hash: md5
+      md5: 196018bd7103b63b645d97fecd64ee9c
+      size: 90
     - path: src/Sentiment_analysis/components/model_evaluation.py
       hash: md5
-      md5: ac3c0456e678af6df9fb103658e094f1
-      size: 6805
+      md5: 48c942139b8f2e918d2cad2ed4dcaec3
+      size: 7629
     - path: src/Sentiment_analysis/config/config.py
       hash: md5
-      md5: 3755bfd41f05dcf772a69624ac950f2e
-      size: 6036
+      md5: 887d93ff11458847fb92d51e453bf60e
+      size: 6714
     - path: src/Sentiment_analysis/entity/entity.py
       hash: md5
-      md5: 3c1b3c33503b06d457f71bced4495bd6
-      size: 1876
+      md5: 3bcb34ab50618873a0c3bca125ed8da5
+      size: 2115
     - path: src/Sentiment_analysis/pipeline/pipeline_05_model_evaluation.py
       hash: md5
       md5: 24790fe42ae163a084c4209d54cd505e
       size: 406
+    - path: src/Sentiment_analysis/utils/aws_credentials.py
+      hash: md5
+      md5: 77d7edb045102c37b03f69238711341d
+      size: 1751
     - path: src/Sentiment_analysis/utils/common.py
       hash: md5
       md5: 90c2ddb2c9c4e2f3c9379f9dbb8fed14
       size: 3702
+    - path: src/Sentiment_analysis/utils/experiment_tracking.py
+      hash: md5
+      md5: e4b3dca66667677beddd262a8b817c3f
+      size: 7676
     outs:
     - path: artifacts/model_evaluation
       hash: md5
-      md5: 06785ace27859d1aaecadae9f188dee8.dir
-      size: 59696
+      md5: 6aa334b18c9a02e0bcf386e37fb58592.dir
+      size: 60075
       nfiles: 5
     - path: reports/evaluation_metrics.json
       hash: md5

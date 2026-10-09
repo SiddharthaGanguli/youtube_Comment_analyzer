@@ -1,0 +1,3 @@
+mlflow==3.17.0
+# Keep boto3 compatible with DVC's aiobotocore dependency.
+boto3==1.43.106

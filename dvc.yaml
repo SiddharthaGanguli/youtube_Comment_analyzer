@@ -52,9 +52,12 @@ stages:
       - config/config.yaml
       - config/params.yaml
       - requirements-pipeline.txt
+      - requirements-tracking.txt
       - src/Sentiment_analysis/config/config.py
       - src/Sentiment_analysis/entity/entity.py
       - src/Sentiment_analysis/utils/common.py
+      - src/Sentiment_analysis/utils/experiment_tracking.py
+      - src/Sentiment_analysis/utils/aws_credentials.py
       - src/Sentiment_analysis/components/model_training.py
       - src/Sentiment_analysis/pipeline/pipeline_04_model_training.py
       - logging_/logger_.py
@@ -70,10 +73,13 @@ stages:
       - config/config.yaml
       - config/params.yaml
       - requirements-pipeline.txt
+      - requirements-tracking.txt
       - requirements-eda.txt
       - src/Sentiment_analysis/config/config.py
       - src/Sentiment_analysis/entity/entity.py
       - src/Sentiment_analysis/utils/common.py
+      - src/Sentiment_analysis/utils/experiment_tracking.py
+      - src/Sentiment_analysis/utils/aws_credentials.py
       - src/Sentiment_analysis/components/model_evaluation.py
       - src/Sentiment_analysis/pipeline/pipeline_05_model_evaluation.py
       - logging_/logger_.py

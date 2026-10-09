@@ -38,6 +38,7 @@ class PipelineCliTests(unittest.TestCase):
                     elif key.endswith("file") or key.startswith("confusion_matrix_"):
                         config[section][key] = str(root / section / Path(value).name)
             config["data_validation"]["required_columns"] = frame.columns.tolist()
+            config["mlflow"]["enabled"] = False
             config_path = root / "config.yaml"
             config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
             params = yaml.safe_load((project_root / "config/params.yaml").read_text(encoding="utf-8"))

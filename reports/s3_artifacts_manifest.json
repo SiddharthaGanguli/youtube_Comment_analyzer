@@ -1,0 +1,187 @@
+{
+  "verified_at": "2026-10-09T09:47:26.895725+00:00",
+  "dvc_lock_sha256": "3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978",
+  "remote": "s3://yt-comment-analyzer-main/datasets/youtube-comments",
+  "stages": {
+    "ingestion": [
+      {
+        "path": "artifacts/data_ingestion",
+        "object": {
+          "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/74/c0bfa1d015fd163bc3b510edbb281f.dir",
+          "size_bytes": 81,
+          "md5": "74c0bfa1d015fd163bc3b510edbb281f",
+          "verified": true
+        },
+        "files": [
+          {
+            "path": "artifacts/data_ingestion/ingestion_report.json",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/1c/ca46b5a36452cbbfeb08ac651595d0",
+            "size_bytes": 312,
+            "md5": "1cca46b5a36452cbbfeb08ac651595d0",
+            "verified": true
+          }
+        ]
+      }
+    ],
+    "validation": [
+      {
+        "path": "artifacts/data_validation",
+        "object": {
+          "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/63/6d7c9efd905b933501c28ebf25bd1b.dir",
+          "size_bytes": 161,
+          "md5": "636d7c9efd905b933501c28ebf25bd1b",
+          "verified": true
+        },
+        "files": [
+          {
+            "path": "artifacts/data_validation/quarantine_rows.csv",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/7e/756e249e9272bb9c525b0b798aeb66",
+            "size_bytes": 98428,
+            "md5": "7e756e249e9272bb9c525b0b798aeb66",
+            "verified": true
+          },
+          {
+            "path": "artifacts/data_validation/validation_report.json",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/d5/0d517a927ec57be24bd2aa7ea96292",
+            "size_bytes": 1105,
+            "md5": "d50d517a927ec57be24bd2aa7ea96292",
+            "verified": true
+          }
+        ]
+      }
+    ],
+    "preprocessing": [
+      {
+        "path": "artifacts/data_preprocessing",
+        "object": {
+          "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/bb/3ae9e3c97c39b648f59fe4d232a279.dir",
+          "size_bytes": 296,
+          "md5": "bb3ae9e3c97c39b648f59fe4d232a279",
+          "verified": true
+        },
+        "files": [
+          {
+            "path": "artifacts/data_preprocessing/preprocessing_report.json",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/ea/6282c240d7839d62163f07e7ccd50e",
+            "size_bytes": 1557,
+            "md5": "ea6282c240d7839d62163f07e7ccd50e",
+            "verified": true
+          },
+          {
+            "path": "artifacts/data_preprocessing/test.csv",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/07/dc1882e1593324cca24efc6424d7c9",
+            "size_bytes": 18168184,
+            "md5": "07dc1882e1593324cca24efc6424d7c9",
+            "verified": true
+          },
+          {
+            "path": "artifacts/data_preprocessing/train.csv",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/16/ecba64c96b80176f8b0cd783820405",
+            "size_bytes": 145022737,
+            "md5": "16ecba64c96b80176f8b0cd783820405",
+            "verified": true
+          },
+          {
+            "path": "artifacts/data_preprocessing/validation.csv",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/30/c6cc4fa8bfefa6050190316e64d14a",
+            "size_bytes": 18049114,
+            "md5": "30c6cc4fa8bfefa6050190316e64d14a",
+            "verified": true
+          }
+        ]
+      }
+    ],
+    "training": [
+      {
+        "path": "artifacts/model_training",
+        "object": {
+          "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/b3/6c8a017f3dde1305b6136111b93c31.dir",
+          "size_bytes": 162,
+          "md5": "b36c8a017f3dde1305b6136111b93c31",
+          "verified": true
+        },
+        "files": [
+          {
+            "path": "artifacts/model_training/sentiment_model.joblib",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/15/ee2f927121b9b3c94707d1a3633f8e",
+            "size_bytes": 2323587,
+            "md5": "15ee2f927121b9b3c94707d1a3633f8e",
+            "verified": true
+          },
+          {
+            "path": "artifacts/model_training/training_report.json",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/b5/68448dca11da4e4169afda1c03accc",
+            "size_bytes": 1935,
+            "md5": "b568448dca11da4e4169afda1c03accc",
+            "verified": true
+          }
+        ]
+      }
+    ],
+    "evaluation": [
+      {
+        "path": "artifacts/model_evaluation",
+        "object": {
+          "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/6a/a334b18c9a02e0bcf386e37fb58592.dir",
+          "size_bytes": 404,
+          "md5": "6aa334b18c9a02e0bcf386e37fb58592",
+          "verified": true
+        },
+        "files": [
+          {
+            "path": "artifacts/model_evaluation/classification_report.json",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/92/34e8b0af97b82ceb46cccd8d43c254",
+            "size_bytes": 831,
+            "md5": "9234e8b0af97b82ceb46cccd8d43c254",
+            "verified": true
+          },
+          {
+            "path": "artifacts/model_evaluation/confusion_matrix.csv",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/9f/dc7e54ecf95adeb145853f1658cb70",
+            "size_bytes": 115,
+            "md5": "9fdc7e54ecf95adeb145853f1658cb70",
+            "verified": true
+          },
+          {
+            "path": "artifacts/model_evaluation/confusion_matrix.png",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/74/0567b246f35c5a570efbbf1cd67ed9",
+            "size_bytes": 38133,
+            "md5": "740567b246f35c5a570efbbf1cd67ed9",
+            "verified": true
+          },
+          {
+            "path": "artifacts/model_evaluation/error_sample.csv",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/b0/46916ad77a94e38408c62e46201deb",
+            "size_bytes": 19669,
+            "md5": "b046916ad77a94e38408c62e46201deb",
+            "verified": true
+          },
+          {
+            "path": "artifacts/model_evaluation/evaluation_report.json",
+            "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/files/md5/3d/33798587c386f100a7644ec62a4125",
+            "size_bytes": 1327,
+            "md5": "3d33798587c386f100a7644ec62a4125",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
+  "mlflow": {
+    "run_id": "558fb584d2b648c08f81b851a9396a51",
+    "experiment_id": "1",
+    "tracking_uri": "sqlite:///E:/Ai-sys/youtube_Comment_analyzer/.mlflow/mlflow.db",
+    "artifact_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/mlflow/558fb584d2b648c08f81b851a9396a51/artifacts",
+    "model_uri": "models:/m-0ce07e7788ef43d98dc7f2b35b954022",
+    "model_download_and_prediction_verified": true
+  },
+  "tracking_database_backup": {
+    "s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/tracking/558fb584d2b648c08f81b851a9396a51/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/mlflow.db",
+    "size_bytes": 954368,
+    "md5": "3d6aeff18c2ce7e94a7afeebfb4a85b8",
+    "verified": true,
+    "sha256": "6311d934f27a0d7ec40f527bba8168cad44142c10e5949a63a66568033a49f3a"
+  },
+  "dvc_lock_s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/manifests/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/dvc.lock",
+  "manifest_s3_uri": "s3://yt-comment-analyzer-main/datasets/youtube-comments/manifests/3da60e8b7d6ef122c8e7c2396a92ce2937758ccaca5ba6de7c624fff24dee978/s3_artifacts_manifest.json"
+}

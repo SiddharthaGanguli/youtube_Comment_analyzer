@@ -15,6 +15,7 @@ from src.Sentiment_analysis.entity.entity import ModelTrainingConfig
 from src.Sentiment_analysis.utils.common import (
     check_split_overlap, classification_metrics, load_verified_split, sha256_file, write_json,
 )
+from src.Sentiment_analysis.utils.experiment_tracking import experiment_run
 
 
 class ModelTraining:
@@ -23,6 +24,15 @@ class ModelTraining:
         self.logger = Logger("model_training.log").get_logger()
 
     def run(self):
+        try:
+            with experiment_run(self.config.mlflow) as tracking:
+                return self._run(tracking)
+        except Exception as error:
+            # Setup/upload failures must invalidate any previous successful report too.
+            write_json(self.config.report_file, {"passed": False, "error": str(error)})
+            raise
+
+    def _run(self, tracking):
         config = self.config
         report = {"passed": False}
         try:
@@ -83,6 +93,8 @@ class ModelTraining:
                 "test_used_for_training": False,
             })
             write_json(config.report_file, report)
+            if tracking:
+                tracking.log_training(pipeline, config, report)
             self.logger.info("Validation accuracy: %.4f; macro F1: %.4f",
                              validation_metrics["accuracy"], validation_metrics["f1_macro"])
             return report

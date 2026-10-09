@@ -1,6 +1,6 @@
 -r requirements-eda.txt
 -r requirements-pipeline.txt
-mlflow
+-r requirements-tracking.txt
 -r requirements-dvc.txt
 dagshub
 nltk

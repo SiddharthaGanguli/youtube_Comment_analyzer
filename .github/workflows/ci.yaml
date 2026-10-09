@@ -20,8 +20,9 @@ jobs:
           cache-dependency-path: |
             requirements-eda.txt
             requirements-pipeline.txt
+            requirements-tracking.txt
       - name: Install notebook and pipeline dependencies
-        run: python -m pip install -r requirements-eda.txt -r requirements-pipeline.txt
+        run: python -m pip install -r requirements-eda.txt -r requirements-pipeline.txt -r requirements-tracking.txt
       - name: Check stage behavior on small fixtures
         env:
           MPLCONFIGDIR: ${{ runner.temp }}/matplotlib

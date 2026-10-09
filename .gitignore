@@ -1,6 +1,9 @@
 # Runtime outputs
 logs/
 artifacts/
+.mlflow/
+mlruns/
+mlartifacts/
 
 # Local datasets and derived data; keep folder markers and DVC metadata
 data/**

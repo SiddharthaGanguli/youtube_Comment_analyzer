@@ -2,6 +2,7 @@ from pathlib import Path
 
 from src.Sentiment_analysis.entity.entity import (
     DataIngestionConfig, DataValidationConfig, DataPreprocessingConfig, ModelTrainingConfig, ModelEvaluationConfig,
+    MLflowConfig,
 )
 from src.Sentiment_analysis.utils.common import read_yaml
 
@@ -90,6 +91,7 @@ class ConfigurationManager:
             title_column=columns["video_title"], target_column=columns["target"],
             label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
             parameters=read_yaml(self.params_path)["model_training"],
+            mlflow=self.get_mlflow_config(),
         )
 
     def get_model_evaluation_config(self):
@@ -113,4 +115,19 @@ class ConfigurationManager:
             target_column=columns["target"],
             label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
             parameters=read_yaml(self.params_path)["model_evaluation"],
+            mlflow=self.get_mlflow_config(),
+        )
+
+    def get_mlflow_config(self):
+        settings = self.config.get("mlflow", {})
+        if not settings.get("enabled", False):
+            return None
+        database = self._path(settings["database"])
+        database.parent.mkdir(parents=True, exist_ok=True)
+        return MLflowConfig(
+            project_root=self.project_root,
+            tracking_uri=f"sqlite:///{database.as_posix()}",
+            experiment_name=settings["experiment_name"],
+            artifact_location=settings["artifact_location"],
+            run_name=settings["run_name"],
         )

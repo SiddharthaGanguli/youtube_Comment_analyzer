@@ -12,6 +12,7 @@ from src.Sentiment_analysis.entity.entity import ModelEvaluationConfig
 from src.Sentiment_analysis.utils.common import (
     check_split_overlap, classification_metrics, load_verified_split, sha256_file, write_json,
 )
+from src.Sentiment_analysis.utils.experiment_tracking import experiment_run
 
 
 class ModelEvaluation:
@@ -20,6 +21,18 @@ class ModelEvaluation:
         self.logger = Logger("model_evaluation.log").get_logger()
 
     def run(self):
+        try:
+            training = json.loads(self.config.training_report.read_text(encoding="utf-8"))
+            if self.config.mlflow and not training.get("mlflow"):
+                raise ValueError("Training must log an MLflow run before tracked evaluation")
+            with experiment_run(self.config.mlflow, training.get("mlflow")) as tracking:
+                return self._run(tracking)
+        except Exception as error:
+            write_json(self.config.report_file, {"passed": False, "error": str(error)})
+            write_json(self.config.metrics_file, {"evaluation_passed": 0})
+            raise
+
+    def _run(self, tracking):
         config = self.config
         report = {"passed": False}
         try:
@@ -89,6 +102,8 @@ class ModelEvaluation:
             })
             write_json(config.report_file, report)
             write_json(config.metrics_file, flat_metrics)
+            if tracking:
+                tracking.log_evaluation(config, report, flat_metrics, training)
             self.logger.info("Test accuracy: %.4f; macro F1: %.4f; majority baseline accuracy: %.4f",
                              test_metrics["accuracy"], test_metrics["f1_macro"], baseline["accuracy"])
             return report

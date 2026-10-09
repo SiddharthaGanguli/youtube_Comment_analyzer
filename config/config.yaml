@@ -61,3 +61,11 @@ model_evaluation:
   confusion_matrix_csv: artifacts/model_evaluation/confusion_matrix.csv
   confusion_matrix_plot: artifacts/model_evaluation/confusion_matrix.png
   error_sample_file: artifacts/model_evaluation/error_sample.csv
+
+# The local database holds run metadata; model/report artifacts go directly to S3.
+mlflow:
+  enabled: true
+  database: .mlflow/mlflow.db
+  experiment_name: youtube-comment-sentiment
+  run_name: tfidf-logistic-regression
+  artifact_location: s3://yt-comment-analyzer-main/datasets/youtube-comments/mlflow
