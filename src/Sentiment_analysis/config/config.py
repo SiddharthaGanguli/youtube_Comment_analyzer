@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.Sentiment_analysis.entity.entity import DataIngestionConfig, DataValidationConfig
+from src.Sentiment_analysis.entity.entity import DataIngestionConfig, DataValidationConfig, DataPreprocessingConfig
 from src.Sentiment_analysis.utils.common import read_yaml
 
 
@@ -53,4 +53,23 @@ class ConfigurationManager:
             sentiment_column=columns["sentiment"],
             target_column=columns["target"],
             label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
+        )
+
+    def get_data_preprocessing_config(self):
+        dataset = self.config["dataset"]
+        settings = self.config["data_preprocessing"]
+        validation = self.config["data_validation"]
+        columns = dataset["columns"]
+        return DataPreprocessingConfig(
+            raw_data_file=self._path(dataset["raw_path"]),
+            validation_report=self._path(validation["report_file"]),
+            quarantine_file=self._path(validation["quarantine_file"]),
+            train_file=self._path(settings["train_file"]),
+            validation_file=self._path(settings["validation_file"]),
+            test_file=self._path(settings["test_file"]),
+            report_file=self._path(settings["report_file"]),
+            encoding=dataset["encoding"], text_column=columns["text"],
+            title_column=columns["video_title"], target_column=columns["target"],
+            label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
+            parameters=read_yaml(self.params_path)["data_preprocessing"],
         )

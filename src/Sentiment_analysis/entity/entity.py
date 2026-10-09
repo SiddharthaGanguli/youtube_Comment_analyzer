@@ -29,3 +29,20 @@ class DataValidationConfig:
     sentiment_column: str
     target_column: str
     label_mapping: dict[int, str]
+
+
+@dataclass(frozen=True)
+class DataPreprocessingConfig:
+    raw_data_file: Path
+    validation_report: Path
+    quarantine_file: Path
+    train_file: Path
+    validation_file: Path
+    test_file: Path
+    report_file: Path
+    encoding: str
+    text_column: str
+    title_column: str
+    target_column: str
+    label_mapping: dict[int, str]
+    parameters: dict

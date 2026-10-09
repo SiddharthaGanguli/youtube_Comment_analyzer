@@ -1,0 +1,8 @@
+# Fractions refer to title groups; the row counts can differ slightly.
+data_preprocessing:
+  random_state: 42
+  train_size: 0.8
+  validation_size: 0.1
+  test_size: 0.1
+  unicode_normalization: NFKC
+  language_policy: keep_all

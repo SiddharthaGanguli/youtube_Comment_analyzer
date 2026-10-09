@@ -1,4 +1,5 @@
 -r requirements-eda.txt
+-r requirements-pipeline.txt
 mlflow
 -r requirements-dvc.txt
 dagshub

@@ -36,3 +36,17 @@ def read_comments(path, encoding="utf-8"):
 
 def comparison_key(text):
     return text.fillna("").str.replace(r"\s+", " ", regex=True).str.strip().str.casefold()
+
+
+def check_split_overlap(splits, text_column, title_column):
+    """Fail if any two splits share titles, comment text, or source rows."""
+    names = list(splits)
+    for position, left_name in enumerate(names):
+        left = splits[left_name]
+        for right_name in names[position + 1:]:
+            right = splits[right_name]
+            for column in [text_column, title_column, "source_row"]:
+                left_keys = comparison_key(left[column]) if column != "source_row" else left[column].astype(str)
+                right_keys = comparison_key(right[column]) if column != "source_row" else right[column].astype(str)
+                if set(left_keys) & set(right_keys):
+                    raise ValueError(f"{column} overlaps between {left_name} and {right_name}")

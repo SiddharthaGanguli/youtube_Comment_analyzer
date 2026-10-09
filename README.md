@@ -13,6 +13,7 @@ Run ingestion from the repository root:
 ```powershell
 .\.venv\Scripts\python.exe main.py --stage ingestion
 .\.venv\Scripts\python.exe main.py --stage validation
+.\.venv\Scripts\python.exe main.py --stage preprocessing
 ```
 
 Ingestion verifies the configured file size and SHA-256. If the CSV is missing,
@@ -29,6 +30,20 @@ and agreement with the text labels. Structural failures stop the stage and write
 a failed report. Empty comments/titles and conflicting title/comment label groups
 are listed in `artifacts/data_validation/quarantine_rows.csv` for preprocessing
 to exclude. Exact duplicate rows are counted for the next stage to remove.
+
+Preprocessing removes quarantined rows and exact duplicates, decodes HTML,
+normalizes Unicode/whitespace, and preserves punctuation, emoji, and negation.
+All languages are retained. Title groups are split approximately 80/10/10 using
+seed 42. Repeated comment text is removed from training/validation when it occurs
+in a higher-priority holdout split; the test set stays fixed. The stage checks
+that title, comment, and source-row overlap are zero and records each split's
+class counts and checksum under `artifacts/data_preprocessing/`.
+
+Install the pipeline dependencies before running preprocessing or training:
+
+```powershell
+uv pip install --python .venv/Scripts/python.exe -r requirements-pipeline.txt
+```
 
 ## Python environment
 

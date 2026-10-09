@@ -40,3 +40,10 @@ data_validation:
     - tokens_comment_text
     - clean_title
     - token_title
+
+data_preprocessing:
+  root_dir: artifacts/data_preprocessing
+  train_file: artifacts/data_preprocessing/train.csv
+  validation_file: artifacts/data_preprocessing/validation.csv
+  test_file: artifacts/data_preprocessing/test.csv
+  report_file: artifacts/data_preprocessing/preprocessing_report.json
