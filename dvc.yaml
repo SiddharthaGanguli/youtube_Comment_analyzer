@@ -1,0 +1,15 @@
+stages:
+  ingestion:
+    cmd: python main.py --stage ingestion
+    deps:
+      - main.py
+      - config/config.yaml
+      - src/Sentiment_analysis/config/config.py
+      - src/Sentiment_analysis/entity/entity.py
+      - src/Sentiment_analysis/utils/common.py
+      - src/Sentiment_analysis/components/data_ingestion.py
+      - src/Sentiment_analysis/pipeline/pipeline_01_data_ingestion.py
+      - logging_/logger_.py
+      - data/raw/youtube-comments-sentiment.csv
+    outs:
+      - artifacts/data_ingestion

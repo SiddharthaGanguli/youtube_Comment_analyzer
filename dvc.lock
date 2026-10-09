@@ -1,0 +1,47 @@
+schema: '2.0'
+stages:
+  ingestion:
+    cmd: python main.py --stage ingestion
+    deps:
+    - path: config/config.yaml
+      hash: md5
+      md5: fcd4b2f65d4c08bb9c675cde9b8e8190
+      size: 1119
+    - path: data/raw/youtube-comments-sentiment.csv
+      hash: md5
+      md5: 140c4ad50348b2b04fc6c112819c517e
+      size: 445484444
+    - path: logging_/logger_.py
+      hash: md5
+      md5: 84a5399439b218b88ff5644e602a122b
+      size: 1148
+    - path: main.py
+      hash: md5
+      md5: 435d1b53b1ae00a8cb6e6300807a620e
+      size: 1354
+    - path: src/Sentiment_analysis/components/data_ingestion.py
+      hash: md5
+      md5: 1911e553bd36dd9dc185f0c7832082df
+      size: 2171
+    - path: src/Sentiment_analysis/config/config.py
+      hash: md5
+      md5: f3e50e032bb984b3ee8a0691bcaa051a
+      size: 1563
+    - path: src/Sentiment_analysis/entity/entity.py
+      hash: md5
+      md5: 153acf81b8bb2b8e00750028207314e1
+      size: 328
+    - path: src/Sentiment_analysis/pipeline/pipeline_01_data_ingestion.py
+      hash: md5
+      md5: b86c300808a1e15ec8844b08c5ec320d
+      size: 420
+    - path: src/Sentiment_analysis/utils/common.py
+      hash: md5
+      md5: 9378b69cbf3f900c3917f8d6f493d49c
+      size: 1189
+    outs:
+    - path: artifacts/data_ingestion
+      hash: md5
+      md5: 74c0bfa1d015fd163bc3b510edbb281f.dir
+      size: 312
+      nfiles: 1

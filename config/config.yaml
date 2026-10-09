@@ -20,3 +20,9 @@ dataset:
     0: Negative
     1: Neutral
     2: Positive
+
+# Ingestion restores the DVC-tracked CSV when it is missing, then verifies it.
+data_ingestion:
+  root_dir: artifacts/data_ingestion
+  report_file: artifacts/data_ingestion/ingestion_report.json
+  restore_with_dvc: true

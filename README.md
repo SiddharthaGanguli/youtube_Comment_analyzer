@@ -3,6 +3,26 @@
 YouTube comment sentiment analysis. The current DVC setup tracks the raw dataset;
 preprocessing and training stages will be added as the application is implemented.
 
+## Run the pipeline
+
+Each stage follows `config.yaml` → typed configuration in `entity.py` →
+`ConfigurationManager` → component → pipeline → `main.py`.
+
+Run ingestion from the repository root:
+
+```powershell
+.\.venv\Scripts\python.exe main.py --stage ingestion
+```
+
+Ingestion verifies the configured file size and SHA-256. If the CSV is missing,
+it restores the DVC-tracked version using the existing S3 remote settings.
+Its report is saved under `artifacts/data_ingestion/`; a corrupt local file fails
+verification rather than being overwritten. Run the stage checks with:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
 ## Python environment
 
 The project uses Python 3.12 in `.venv/`. VS Code's project settings point to
