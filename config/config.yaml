@@ -62,6 +62,11 @@ model_evaluation:
   confusion_matrix_plot: artifacts/model_evaluation/confusion_matrix.png
   error_sample_file: artifacts/model_evaluation/error_sample.csv
 
+# Prediction reuses the model and report from model_training.
+model_prediction:
+  report_file: artifacts/model_prediction/predictions.json
+  restore_with_dvc: true
+
 # The local database holds run metadata; model/report artifacts go directly to S3.
 mlflow:
   enabled: true

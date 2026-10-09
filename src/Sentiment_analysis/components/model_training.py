@@ -16,6 +16,7 @@ from src.Sentiment_analysis.utils.common import (
     check_split_overlap, classification_metrics, load_verified_split, sha256_file, write_json,
 )
 from src.Sentiment_analysis.utils.experiment_tracking import experiment_run
+from src.Sentiment_analysis.utils.text import text_preprocessing_settings
 
 
 class ModelTraining:
@@ -39,6 +40,7 @@ class ModelTraining:
             preprocessing = json.loads(config.preprocessing_report.read_text(encoding="utf-8"))
             if not preprocessing.get("passed"):
                 raise ValueError("Successful preprocessing is required before training")
+            text_settings = text_preprocessing_settings(preprocessing["parameters"])
             frames = {}
             for name, path in [("train", config.train_file), ("validation", config.validation_file)]:
                 frames[name] = load_verified_split(
@@ -79,6 +81,7 @@ class ModelTraining:
                 "pipeline": pipeline, "label_mapping": config.label_mapping,
                 "text_column": config.text_column, "preprocessing_sha256": preprocessing_sha256,
                 "parameters": params, "package_versions": package_versions,
+                "text_preprocessing": text_settings,
             }
             config.model_file.parent.mkdir(parents=True, exist_ok=True)
             joblib.dump(bundle, config.model_file, compress=3)
@@ -91,6 +94,7 @@ class ModelTraining:
                 "majority_label": majority_label, "validation_majority_baseline": baseline_metrics,
                 "label_mapping": config.label_mapping, "package_versions": package_versions,
                 "test_used_for_training": False,
+                "text_preprocessing": text_settings,
             })
             write_json(config.report_file, report)
             if tracking:

@@ -99,7 +99,8 @@ class ExperimentTracking:
             pip_requirements=[f"{name}=={version(name)}" for name in
                               ("scikit-learn", "numpy", "scipy", "joblib", "cloudpickle")],
             metadata={"label_mapping": {str(key): value for key, value in config.label_mapping.items()},
-                      "preprocessing_sha256": report["preprocessing_sha256"]},
+                      "preprocessing_sha256": report["preprocessing_sha256"],
+                      "text_preprocessing": report["text_preprocessing"]},
             tags={"mlflow.user": self.settings.user_name},
         )
         run = mlflow.active_run()
@@ -123,6 +124,7 @@ class ExperimentTracking:
         for filename in (
             "components/model_training.py", "components/model_evaluation.py", "utils/common.py",
             "utils/experiment_tracking.py", "utils/aws_credentials.py", "entity/entity.py", "config/config.py",
+            "utils/text.py", "services/prediction.py",
         ):
             path = self.settings.project_root / "src/Sentiment_analysis" / filename
             if path.is_file():

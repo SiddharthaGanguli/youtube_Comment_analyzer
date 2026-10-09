@@ -38,6 +38,7 @@ stages:
       - src/Sentiment_analysis/config/config.py
       - src/Sentiment_analysis/entity/entity.py
       - src/Sentiment_analysis/utils/common.py
+      - src/Sentiment_analysis/utils/text.py
       - src/Sentiment_analysis/components/data_preprocessing.py
       - src/Sentiment_analysis/pipeline/pipeline_03_data_preprocessing.py
       - logging_/logger_.py
@@ -56,6 +57,8 @@ stages:
       - src/Sentiment_analysis/config/config.py
       - src/Sentiment_analysis/entity/entity.py
       - src/Sentiment_analysis/utils/common.py
+      - src/Sentiment_analysis/utils/text.py
+      - src/Sentiment_analysis/services/prediction.py
       - src/Sentiment_analysis/utils/experiment_tracking.py
       - src/Sentiment_analysis/utils/aws_credentials.py
       - src/Sentiment_analysis/components/model_training.py

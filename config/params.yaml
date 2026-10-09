@@ -28,3 +28,8 @@ model_training:
 model_evaluation:
   random_state: 42
   error_sample_size: 100
+
+model_prediction:
+  batch_size: 256
+  max_comments: 10000
+  review_confidence_threshold: 0.6

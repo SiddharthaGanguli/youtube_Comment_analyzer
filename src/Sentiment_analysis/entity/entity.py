@@ -95,3 +95,15 @@ class ModelEvaluationConfig:
     label_mapping: dict[int, str]
     parameters: dict
     mlflow: MLflowConfig | None = None
+
+
+@dataclass(frozen=True)
+class ModelPredictionConfig:
+    project_root: Path
+    model_file: Path
+    training_report: Path
+    report_file: Path
+    text_column: str
+    label_mapping: dict[int, str]
+    restore_with_dvc: bool
+    parameters: dict

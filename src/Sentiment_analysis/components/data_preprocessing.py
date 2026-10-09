@@ -1,7 +1,5 @@
-import html
 import json
 import math
-import unicodedata
 
 import pandas as pd
 from sklearn.model_selection import GroupShuffleSplit
@@ -11,6 +9,7 @@ from src.Sentiment_analysis.entity.entity import DataPreprocessingConfig
 from src.Sentiment_analysis.utils.common import (
     check_split_overlap, comparison_key, read_comments, sha256_file, write_json,
 )
+from src.Sentiment_analysis.utils.text import normalize_text
 
 
 class DataPreprocessing:
@@ -20,10 +19,7 @@ class DataPreprocessing:
 
     def _normalize(self, values):
         form = self.config.parameters["unicode_normalization"]
-        # Decode HTML and normalize whitespace/Unicode without removing sentiment cues.
-        return values.fillna("").map(lambda text: unicodedata.normalize(form, html.unescape(text))).astype(
-            "string"
-        ).str.replace(r"\s+", " ", regex=True).str.strip()
+        return values.fillna("").map(lambda text: normalize_text(text, form)).astype("string")
 
     def run(self):
         config = self.config

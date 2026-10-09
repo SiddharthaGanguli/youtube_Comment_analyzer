@@ -97,6 +97,21 @@ excluded from Git. All five stages are uploaded to the configured S3 remote.
 DVC stores the objects by hash; `dvc.lock` maps those objects back to each stage
 and its files. Use the verified synchronization command below after a new run.
 
+## Predict new comments
+
+The shared service uses the saved TF-IDF/logistic-regression model and the same
+text normalizer as training. It reports per-comment labels, class scores,
+review flags, skipped inputs, and coverage. Try it with:
+
+```powershell
+.\.venv\Scripts\python.exe main.py --stage prediction --input examples/comments.json
+```
+
+The JSON result is saved under `artifacts/model_prediction/`. See
+[prediction usage and the response contract](docs/prediction.md). The extension
+remains a design preview; YouTube retrieval, the HTTP backend, and AWS deployment
+are still to be built.
+
 ## MLflow experiments and stage artifacts
 
 Training explicitly logs hyperparameters, validation metrics, the majority
@@ -129,9 +144,10 @@ After `dvc repro`, synchronize and verify stage artifacts:
 ```
 
 The sync script pushes ingestion, validation, preprocessing, training, and
-evaluation separately. It downloads the remote DVC objects to check their sizes
-and MD5 hashes, then reloads the MLflow model from S3 and checks its predictions
-against the local model. It also uploads a consistent SQLite database backup
+evaluation separately, followed by the DVC-tracked review worksheet. It downloads
+the remote objects to check their sizes and MD5 hashes, then reloads the MLflow
+model from S3 and checks its class scores against the shared prediction service,
+including HTML/Unicode/emoji normalization. It also uploads a consistent SQLite database backup
 and the matching `dvc.lock`. `reports/s3_artifacts_manifest.json` records the
 stage/file paths, verified S3 locations, run ID, and database backup URI. The
 manifest is stored on S3 as well, under `manifests/<dvc-lock-sha256>/`.
@@ -224,16 +240,20 @@ The notebook writes two local files under `data/processed/eda/`:
 | File | Purpose |
 | --- | --- |
 | `data_audit.json` | Counts, source checksum, package versions, and review progress |
-| `label_review_sample.csv` | 200 comments with blank fields for your labels and notes |
+| `label_review_sample.csv` | 200 source comments, assistant decisions/reasons, and fields for your own labels and notes |
 
-Both files are ignored by Git. Rerunning the notebook preserves an existing
+The data files are ignored by Git; the review worksheet now has a `.dvc` pointer
+and is backed up to S3. Rerunning the notebook preserves an existing
 review worksheet and checks that its source rows still match the raw CSV.
 The raw dataset is never modified.
 
 The first audit found 1,032,225 rows, 12,241 exact duplicate rows, and 705
 title/comment pairs with conflicting labels. The supplied cleaned text is empty
 for 31,064 nonempty raw comments. These findings inform the validation and
-preprocessing rules; the manual review worksheet still needs your labels.
+preprocessing rules. The assistant review covers all 200 sampled comments,
+with 30 provisional disagreements and 33 needing context. Your own label
+confirmation is still pending. See [the review notes](docs/label-review.md) and
+[the verified summary](reports/label_review_report.json).
 
 ## DVC storage
 

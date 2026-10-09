@@ -18,7 +18,8 @@ def training_fixture(root):
         frame.to_csv(paths[name], index=False)
         metadata[name] = {"rows": len(frame), "sha256": sha256_file(paths[name])}
     report = root / "preprocessing.json"
-    write_json(report, {"passed": True, "splits": metadata})
+    write_json(report, {"passed": True, "splits": metadata,
+                        "parameters": {"unicode_normalization": "NFKC", "language_policy": "keep_all"}})
     config = ModelTrainingConfig(
         paths["train"], paths["validation"], report, root / "model.joblib", root / "training.json",
         "utf-8", "CommentText", "VideoTitle", "Sentiment_label", {0: "Negative", 1: "Neutral", 2: "Positive"},

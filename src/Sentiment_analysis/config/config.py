@@ -2,7 +2,7 @@ from pathlib import Path
 
 from src.Sentiment_analysis.entity.entity import (
     DataIngestionConfig, DataValidationConfig, DataPreprocessingConfig, ModelTrainingConfig, ModelEvaluationConfig,
-    MLflowConfig,
+    MLflowConfig, ModelPredictionConfig,
 )
 from src.Sentiment_analysis.utils.common import read_yaml
 
@@ -37,6 +37,21 @@ class ConfigurationManager:
             dataset_name=dataset["name"],
             source_revision=dataset["source"]["revision"],
             restore_with_dvc=bool(settings["restore_with_dvc"]),
+        )
+
+    def get_model_prediction_config(self):
+        settings = self.config["model_prediction"]
+        training = self.config["model_training"]
+        dataset = self.config["dataset"]
+        return ModelPredictionConfig(
+            project_root=self.project_root,
+            model_file=self._path(training["model_file"]),
+            training_report=self._path(training["report_file"]),
+            report_file=self._path(settings["report_file"]),
+            text_column=dataset["columns"]["text"],
+            label_mapping={int(key): value for key, value in dataset["label_mapping"].items()},
+            restore_with_dvc=bool(settings["restore_with_dvc"]),
+            parameters=read_yaml(self.params_path)["model_prediction"],
         )
 
     def get_data_validation_config(self):

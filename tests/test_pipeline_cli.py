@@ -58,3 +58,14 @@ class PipelineCliTests(unittest.TestCase):
             metrics = json.loads(Path(config["model_evaluation"]["metrics_file"]).read_text())
             self.assertEqual(metrics["test_rows"], 9)
             self.assertEqual(metrics["evaluation_passed"], 1)
+            input_file, output_file = root / "comments.json", root / "predictions.json"
+            input_file.write_text(json.dumps({"comments": ["wonderful video", "", None]}), encoding="utf-8")
+            result = subprocess.run([sys.executable, str(project_root / "main.py"), "--stage", "prediction",
+                                     "--config", str(config_path), "--params", str(params_path),
+                                     "--input", input_file.name, "--output", output_file.name],
+                                    cwd=root, capture_output=True, text=True, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            predictions = json.loads(output_file.read_text())
+            self.assertEqual(predictions["summary"]["analyzed"], 1)
+            self.assertEqual(predictions["summary"]["skipped"], 2)
+            self.assertEqual(predictions["comments"][0]["sentiment"], "Positive")
