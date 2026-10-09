@@ -1,0 +1,245 @@
+{
+  "source_verified": true,
+  "source_sha256": "9090469dd235cffa05b7f2e551696d46fa064c16a8c1f77e76801476a462458b",
+  "review_path": "data/processed/eda/label_review_sample.csv",
+  "review_sha256": "0ec7ccc3fa2a73b404b5037d8842d38d515c1ce0229f8b98ea6cc1e95397fe8c",
+  "sample_rows": 200,
+  "sampling": "EDA seed-42 sample stratified by supplied class; not population representative",
+  "provided_class_counts": {
+    "Neutral": 67,
+    "Negative": 67,
+    "Positive": 66
+  },
+  "assistant_reviewed_rows": 200,
+  "assistant_class_counts": {
+    "Neutral": 36,
+    "Uncertain": 33,
+    "Negative": 67,
+    "Positive": 64
+  },
+  "decisive_assistant_rows": 167,
+  "needs_context_rows": 33,
+  "provisional_disagreements": 30,
+  "agreement_among_decisive_rows": 0.8203592814371258,
+  "completed_human_review_rows": 0,
+  "manual_review_complete": false,
+  "interpretation": "Individual AI assistant judgments, made before comparing supplied labels. Disagreements are review candidates, not confirmed errors or model accuracy.",
+  "raw_labels_modified": false,
+  "disagreement_rows": [
+    {
+      "source_row": 727777,
+      "provided": "Positive",
+      "assistant": "Neutral",
+      "reason": "Offers a language exchange and asks for help."
+    },
+    {
+      "source_row": 100869,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "Questions the decision to record someone getting dressed, with a skeptical tone."
+    },
+    {
+      "source_row": 134566,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Admires the speaker's confidence and wants to learn from it."
+    },
+    {
+      "source_row": 481286,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Praises the presenters and calls the show fantastic."
+    },
+    {
+      "source_row": 508306,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Praises Poland and supports the proposed invitation."
+    },
+    {
+      "source_row": 127986,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Calls the content wonderful and expresses an aspiration."
+    },
+    {
+      "source_row": 51805,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Expresses enthusiasm for sushi and eagerness to visit; crying emoji does not reverse that meaning."
+    },
+    {
+      "source_row": 233141,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Affectionately describes a fanbase for the teacher's catchphrases; Hindi-English code switching."
+    },
+    {
+      "source_row": 355785,
+      "provided": "Positive",
+      "assistant": "Negative",
+      "reason": "Sarcastically resents celebrities and their experience of ordinary hardship."
+    },
+    {
+      "source_row": 611570,
+      "provided": "Negative",
+      "assistant": "Neutral",
+      "reason": "Asks about a plot detail in an episode."
+    },
+    {
+      "source_row": 325180,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "Cynically criticizes politicians for avoiding direct answers."
+    },
+    {
+      "source_row": 397576,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "Calls the named people gross grifters."
+    },
+    {
+      "source_row": 97241,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "Uses dynasty sarcastically to criticize an administration."
+    },
+    {
+      "source_row": 789930,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "Criticizes corporations' profits and their responsibility."
+    },
+    {
+      "source_row": 896742,
+      "provided": "Negative",
+      "assistant": "Neutral",
+      "reason": "Asks about whether a separator is necessary in an algorithm."
+    },
+    {
+      "source_row": 373742,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "An insulting criticism of someone's capacity for thought."
+    },
+    {
+      "source_row": 851235,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Praises the creator's accuracy and empathy despite distress about world events."
+    },
+    {
+      "source_row": 514679,
+      "provided": "Negative",
+      "assistant": "Neutral",
+      "reason": "Asks how to implement an audio action with the DOM."
+    },
+    {
+      "source_row": 452808,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Explicitly says the joke was very funny."
+    },
+    {
+      "source_row": 888142,
+      "provided": "Positive",
+      "assistant": "Negative",
+      "reason": "Condemns a person's actions and demands prosecution."
+    },
+    {
+      "source_row": 572919,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "Insults a politician's intelligence."
+    },
+    {
+      "source_row": 231127,
+      "provided": "Negative",
+      "assistant": "Neutral",
+      "reason": "Lists technical error messages and requests help."
+    },
+    {
+      "source_row": 53377,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Explicitly praises the content."
+    },
+    {
+      "source_row": 397092,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "A rhetorical question challenges perceived policy inconsistency."
+    },
+    {
+      "source_row": 651050,
+      "provided": "Positive",
+      "assistant": "Neutral",
+      "reason": "Mostly describes three dogs' contrasting behavior, with mixed descriptors."
+    },
+    {
+      "source_row": 214401,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "Sarcastically criticizes a politician's response to an interviewer."
+    },
+    {
+      "source_row": 438090,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "Expresses pessimism and concern about prolonged conflict."
+    },
+    {
+      "source_row": 983524,
+      "provided": "Neutral",
+      "assistant": "Positive",
+      "reason": "Chinese text explicitly praises leaders' decisions and expresses patriotic celebration; historical claims are not checked."
+    },
+    {
+      "source_row": 356872,
+      "provided": "Negative",
+      "assistant": "Neutral",
+      "reason": "Makes an identity correction without explicit approval or dislike."
+    },
+    {
+      "source_row": 212703,
+      "provided": "Neutral",
+      "assistant": "Negative",
+      "reason": "Describes regret about taking a ferry in a storm."
+    }
+  ],
+  "needs_context_source_rows": [
+    691865,
+    181486,
+    757405,
+    707581,
+    500307,
+    135319,
+    925710,
+    566375,
+    873307,
+    1001337,
+    441609,
+    426860,
+    147888,
+    377893,
+    377077,
+    502070,
+    755810,
+    151370,
+    66517,
+    82402,
+    180735,
+    2991,
+    299348,
+    472330,
+    49105,
+    367791,
+    233500,
+    141033,
+    502176,
+    959723,
+    895189,
+    928976,
+    576337
+  ]
+}
