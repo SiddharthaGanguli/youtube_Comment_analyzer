@@ -15,6 +15,12 @@ are ready for implementation; the backend and deployment remain pending.
 Live YouTube sentiment analysis requires the analytics-use approval described
 in the design before it can be enabled.
 
+Backend step 1 is complete: [serving settings and typed entities](docs/serving-configuration.md)
+validate configuration and request/result contracts locally. Run
+`python -m src.Sentiment_analysis.config.serving` from the project environment
+to check `config/serving.yaml`. Job storage, HTTP routes, workers and deployment
+are the next stages.
+
 ## Run the pipeline
 
 Each stage follows `config.yaml` → typed configuration in `entity.py` →

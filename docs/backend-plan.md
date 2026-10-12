@@ -1,9 +1,10 @@
 # Backend implementation plan
 
 The [system design](system-design.md) sets the launch target and its limits.
-This checklist turns that design into small reviewable steps. None of the
-backend work below is complete yet. Finish and verify each step, then commit
-and push it before starting the next, following the project's existing workflow.
+This checklist turns that design into small reviewable steps. Step 1 is complete;
+the storage, API, worker and deployment stages remain pending. Finish and verify
+each step, then commit and push it before starting the next, following the
+project's existing workflow.
 
 Keep the offline training pipeline intact. Serving gets its own typed settings
 so a change to polling or worker concurrency does not invalidate DVC training.
@@ -12,14 +13,19 @@ and the [OpenAPI contract](backend-contract.yaml) as the interface to implement.
 
 ## 1. Serving configuration and entities
 
-- [ ] Add serving YAML, typed entities, then a serving configuration manager.
-- [ ] Validate cross-field rules: visibility >= 6 * timeout, lease > timeout,
+- [x] Add serving YAML, typed entities, then a serving configuration manager.
+- [x] Validate cross-field rules: visibility >= 6 * timeout, lease > timeout,
   total mapping concurrency <= reserved concurrency, soft deadline < timeout,
   sample/page bounds, and freshness < retention.
-- [ ] Require model/release fingerprints, public-only scope, exact allowed
-  origins, secret references and no embedded secret values.
-- [ ] Keep live YouTube analysis disabled without recorded analytics-use approval.
-- [ ] Define typed request/status/result/error entities matching the contract.
+- [x] Require model fingerprints and assigned release/code fingerprints for
+  production, public-only scope, exact allowed origins, secret references and
+  no embedded secret values.
+- [x] Keep live YouTube analysis disabled without recorded analytics-use approval.
+- [x] Define typed request/status/result/error entities matching the contract.
+
+The [serving configuration walkthrough](serving-configuration.md) explains the
+files, local validation command and the development/production distinction.
+Contract/configuration checks run without AWS or the dataset.
 
 Suggested commit: `feat: add typed serving configuration and API entities`.
 
@@ -124,7 +130,8 @@ Suggested commit: `feat: deploy and validate the AWS analysis service`.
 ```text
 config/serving.yaml                 # New serving settings, separate from training
 src/Sentiment_analysis/
-  entity/serving.py                 # Typed settings and domain/job entities
+  entity/serving.py                 # Typed settings and common validation types
+  entity/analysis.py                # Request, status, result and queue entities
   config/serving.py                 # Validate and resolve serving settings
   api/                             # FastAPI schemas, routes, app and Lambda adapter
   repositories/                    # DynamoDB jobs, cache, quota and outbox

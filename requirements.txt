@@ -2,5 +2,6 @@
 -r requirements-pipeline.txt
 -r requirements-tracking.txt
 -r requirements-dvc.txt
+-r requirements-serving.txt
 dagshub
 nltk

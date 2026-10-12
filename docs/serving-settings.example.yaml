@@ -1,15 +1,25 @@
-# Design example only. No current application loads this file.
-# Move approved settings into typed serving configuration during backend work.
+# Mirrors the development settings; it is not loaded automatically.
+# Validate with: python -m src.Sentiment_analysis.config.serving --config docs/serving-settings.example.yaml
 environment: development
 region: us-east-1
 target_active_users: 1000
 monthly_budget_usd: null  # Choose before production deployment.
+
+model:
+  model_file: artifacts/model_training/sentiment_model.joblib
+  training_report: artifacts/model_training/training_report.json
+  sha256: c4ea55bc939afb265f6103703799721fbaa994aa69607fa3ae30daec562395ad
+  preprocessing_sha256: caab0f3ed9fe6fe27ed7c7100b2a72acff0529530b3a4147b466b614bd88dbe5
+  result_schema_version: 1
+  release_id: null  # Assigned after building and checking a serving release.
+  code_revision: null
 
 youtube:
   live_enabled: false
   analytics_use_approved: false
   approval_reference: null
   api_key_secret_arn: null  # Secrets Manager reference, never an API key here.
+  project_quota_verified: false
   visibility: public
   order: time
   text_format: plainText

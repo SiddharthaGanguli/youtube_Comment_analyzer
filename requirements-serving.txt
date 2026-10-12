@@ -1,0 +1,4 @@
+# Lightweight serving settings and contracts; no training/notebook dependencies.
+pydantic==2.14.0
+PyYAML==6.0.3
+tzdata==2026.5
