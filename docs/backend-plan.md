@@ -1,8 +1,8 @@
 # Backend implementation plan
 
 The [system design](system-design.md) sets the launch target and its limits.
-This checklist turns that design into small reviewable steps. Steps 1 through 3 are
-implemented and checked with offline fixtures; model worker and deployment
+This checklist turns that design into small reviewable steps. Steps 1 through 4 are
+implemented and checked with offline fixtures; live fetching and deployment
 remain pending. Finish and verify each step, then commit and push it before
 starting the next, following the
 project's existing workflow.
@@ -69,18 +69,24 @@ Cognito resources and gateway scope configuration are still deployment work.
 
 ## 4. Fixture worker and shared prediction integration
 
-- [ ] Add the runtime native-thread override to PredictionService, preserving
+- [x] Add the runtime native-thread override to PredictionService, preserving
   training settings and checksum/package/preprocessing validation.
-- [ ] Add a worker component, then its orchestration pipeline and Lambda entry
+- [x] Add a worker component, then its orchestration pipeline and Lambda entry
   point. Load one service per warm environment with DVC restoration disabled.
-- [ ] Use fixture video/comment responses to exercise pagination, duplicate IDs,
+- [x] Use fixture video/comment responses to exercise pagination, duplicate IDs,
   empty/unknown/oversized text, partial samples and explicit result-size failures.
-- [ ] Join predictions by original index; reconcile every count and preserve
+- [x] Join predictions by original index; reconcile every count and preserve
   confidence meaning, UTC dates and sample scope.
-- [ ] Test image/model release mismatch, checkpoint resume, attempt deadlines,
+- [x] Test image/model release mismatch, checkpoint resume, attempt deadlines,
   lease expiry, successful result publication and crash recovery.
 
 Suggested commit: `feat: process queued analyses with the shared sentiment model`.
+
+The [worker walkthrough](serving-configuration.md#fixture-worker-and-shared-predictions)
+explains page/batch checkpoints, fenced recovery, bundle verification and test
+commands. The Lambda factory accepts an explicit development fixture only;
+there is no live provider or silent demo fallback. Serving resources remain
+undeployed. Model integration runs on small trained fixtures in Linux CI.
 
 ## 5. Authentication and quota controls
 
@@ -88,7 +94,7 @@ Suggested commit: `feat: process queued analyses with the shared sentiment model
 - [x] Implement global/user admission counters, daily reservations, per-attempt
   spending, unused allowance release and Pacific-time quota rollover.
 - [x] Validate the storage ledger's retries and daylight-saving boundaries.
-- [ ] Integrate spending with the worker: never issue a provider call without
+- [x] Integrate spending with the worker: never issue a provider call without
   an allowance or reset a job's overall deadline.
 - [ ] Add structured metrics/logs without comments, names, tokens or keys.
 
@@ -146,6 +152,8 @@ src/Sentiment_analysis/
   entity/analysis.py                # Request, status, result and queue entities
   entity/api.py                     # Principal, liveness and immutable release manifest
   config/serving.py                 # Validate and resolve serving settings
+  config/worker.py                  # Verify packaged release/training metadata
+  config/worker_runtime.py          # Lazy warm-worker model/client wiring
   api/                             # FastAPI schemas, routes, app and Lambda adapter
   repositories/                    # DynamoDB jobs, cache, quota and outbox
   integrations/                    # YouTube and S3 adapters

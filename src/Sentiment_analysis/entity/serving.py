@@ -70,6 +70,7 @@ def validate_origin(value: str, *, allow_local: bool) -> str:
 class ModelServingSettings(ServingEntity):
     model_file: Path
     training_report: Path
+    text_column: NonEmptyText
     sha256: Sha256
     preprocessing_sha256: Sha256
     result_schema_version: Literal[1]
@@ -172,6 +173,7 @@ class WorkerSettings(ServingEntity):
     soft_deadline_seconds: PositiveInt
     lease_seconds: PositiveInt
     heartbeat_seconds: PositiveInt
+    maximum_attempts: Annotated[int, Field(ge=1, le=20)]
     reserved_concurrency: PositiveInt
     sum_of_release_mapping_maximum_concurrency: Annotated[int, Field(ge=2)]
     batch_size: PositiveInt

@@ -1,0 +1,4 @@
+# Package the worker separately from the HTTP API; no MLflow, DVC or notebooks.
+-r requirements-serving.txt
+-r requirements-pipeline.txt
+numpy==2.5.3

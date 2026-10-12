@@ -1,0 +1,27 @@
+{
+  "video": {
+    "id": "dQw4w9WgXcQ",
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "title": "Synthetic fixture video",
+    "channel_title": "Synthetic fixture channel",
+    "published_at": "2026-10-01T00:00:00Z",
+    "total_comment_count": 5
+  },
+  "pages": {
+    "": {
+      "comments": [
+        {"id": "fixture-1", "author": "Fixture author A", "published_at": "2026-10-12T09:30:00Z", "likes": 2, "text": "Wonderful explanation!"},
+        {"id": "fixture-2", "author": null, "published_at": "2026-10-12T09:20:00Z", "likes": 0, "text": "  "},
+        {"id": "fixture-3", "author": "Fixture author C", "published_at": "2026-10-12T09:10:00Z", "likes": 1, "text": "Terrible video"}
+      ],
+      "next_page_token": "fixture-page-2"
+    },
+    "fixture-page-2": {
+      "comments": [
+        {"id": "fixture-3", "author": "Fixture author C", "published_at": "2026-10-12T09:10:00Z", "likes": 1, "text": "Terrible video"},
+        {"id": "fixture-4", "author": "Fixture author D", "published_at": "2026-10-12T09:00:00Z", "likes": 0, "text": "ordinary video"}
+      ],
+      "next_page_token": null
+    }
+  }
+}

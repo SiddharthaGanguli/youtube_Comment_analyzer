@@ -214,8 +214,8 @@ stages:
       size: 396
     - path: src/Sentiment_analysis/services/prediction.py
       hash: md5
-      md5: 93a6909009df33a62f1f367adc5c0ccf
-      size: 7969
+      md5: 46d0f5f92cbd278142ecc768ec2b0e6f
+      size: 8477
     - path: src/Sentiment_analysis/utils/aws_credentials.py
       hash: md5
       md5: 77d7edb045102c37b03f69238711341d

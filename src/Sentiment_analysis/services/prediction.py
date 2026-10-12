@@ -1,6 +1,7 @@
 """Predict comment sentiment without fitting a vocabulary or classifier."""
 
 import json
+import hashlib
 import math
 import subprocess
 import sys
@@ -12,14 +13,13 @@ import numpy as np
 from threadpoolctl import threadpool_limits
 
 from src.Sentiment_analysis.entity.entity import ModelPredictionConfig
-from src.Sentiment_analysis.utils.common import sha256_file
 from src.Sentiment_analysis.utils.text import normalize_text, validate_text_preprocessing
 
 
 class PredictionService:
     """Load one verified model and reuse it for successive prediction requests."""
 
-    def __init__(self, config: ModelPredictionConfig):
+    def __init__(self, config: ModelPredictionConfig, *, native_thread_limit=None):
         self.config = config
         params = config.parameters
         self.batch_size = self._positive_integer(params["batch_size"], "batch_size")
@@ -27,7 +27,12 @@ class PredictionService:
         self.threshold = float(params["review_confidence_threshold"])
         if not math.isfinite(self.threshold) or not 0 <= self.threshold <= 1:
             raise ValueError("review_confidence_threshold must be between zero and one")
+        if native_thread_limit is not None:
+            self._positive_integer(native_thread_limit, "native_thread_limit")
         self._load_model()
+        # Serving can use one native thread without changing the saved training recipe.
+        self.native_thread_limit = (native_thread_limit if native_thread_limit is not None else
+                                    self._positive_integer(self.training["parameters"]["thread_limit"], "thread_limit"))
 
     @staticmethod
     def _positive_integer(value, name):
@@ -46,7 +51,9 @@ class PredictionService:
         if report.get("passed") is not True:
             raise ValueError("A successful training report is required for prediction")
         # DVC restores artifacts produced by this project. Verify before deserializing.
-        if sha256_file(config.model_file) != report["model_sha256"]:
+        with config.model_file.open("rb") as model_file:
+            model_sha256 = hashlib.file_digest(model_file, "sha256").hexdigest()
+        if model_sha256 != report["model_sha256"]:
             raise ValueError("Model checksum changed after training")
         settings = report.get("text_preprocessing")
         validate_text_preprocessing(settings)
@@ -100,7 +107,7 @@ class PredictionService:
             known = np.asarray(features.getnnz(axis=1)).ravel() > 0
             if not known.any():
                 continue
-            with threadpool_limits(limits=int(self.training["parameters"]["thread_limit"])):
+            with threadpool_limits(limits=self.native_thread_limit):
                 probabilities = classifier.predict_proba(features[known])
             if (not np.isfinite(probabilities).all() or (probabilities < 0).any()
                     or (probabilities > 1).any() or not np.allclose(probabilities.sum(axis=1), 1)):

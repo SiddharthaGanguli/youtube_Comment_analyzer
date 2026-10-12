@@ -95,5 +95,7 @@ The backend will validate the URL, fetch comments, call the prediction service,
 and return video/comment metadata with predictions. The extension will need loading,
 progress, empty-video and failure states before live analysis is enabled.
 YouTube/AWS credentials belong in that backend. They never belong in the
-extension bundle. The preview still uses the demo fixture. HTTP endpoints,
-YouTube fetching, connecting the extension, and AWS deployment remain future work.
+extension bundle. The preview still uses the demo fixture. Live YouTube
+fetching, connecting the extension, and AWS deployment remain future
+work. HTTP routes and the fixture worker are implemented and tested separately;
+this preview still makes no backend requests.

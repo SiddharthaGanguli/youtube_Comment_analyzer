@@ -8,6 +8,7 @@ monthly_budget_usd: null
 model:
   model_file: artifacts/model_training/sentiment_model.joblib
   training_report: artifacts/model_training/training_report.json
+  text_column: CommentText
   sha256: c4ea55bc939afb265f6103703799721fbaa994aa69607fa3ae30daec562395ad
   preprocessing_sha256: caab0f3ed9fe6fe27ed7c7100b2a72acff0529530b3a4147b466b614bd88dbe5
   result_schema_version: 1
@@ -55,6 +56,8 @@ admission:
   user_maximum_active_references: 2
 
 worker:
+  # The worker reuses the verified training bundle; these are runtime overrides.
+  # Fixture providers are injected explicitly and are allowed only in development.
   architecture: x86_64
   python_version: '3.12'
   memory_mib: 2048
@@ -62,12 +65,14 @@ worker:
   soft_deadline_seconds: 150
   lease_seconds: 210
   heartbeat_seconds: 30
+  maximum_attempts: 5
   reserved_concurrency: 10
   sum_of_release_mapping_maximum_concurrency: 10
   batch_size: 256
   native_thread_limit: 1
   review_confidence_threshold: 0.6
   restore_with_dvc: false
+  # Oversized comment text is skipped before normalization and checkpoint storage.
   maximum_comment_characters: 5000
   maximum_result_bytes: 10485760
 

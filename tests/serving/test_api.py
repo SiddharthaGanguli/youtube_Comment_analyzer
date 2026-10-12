@@ -48,6 +48,38 @@ class GatewayContext:
 
 
 class APITests(StorageFixture, unittest.TestCase):
+    def test_submission_dispatch_worker_status_download_and_cache_flow(self):
+        from src.Sentiment_analysis.entity.worker import WorkerIdentity
+        from src.Sentiment_analysis.integrations.fixture_comments import FixtureCommentProvider
+        from src.Sentiment_analysis.pipeline.analysis import AnalysisPipeline
+        from tests.serving.test_worker import SyntheticPredictor
+        submitted = self.submit()
+        self.assertEqual(submitted.status_code, 202)
+        analysis_id = submitted.json()["analysis_id"]
+        _, work = self.jobs.owned(ALICE, analysis_id)
+        outbox = self.store.get(f"OUTBOX#{work.work_id}#0")
+        self.assertTrue(self.dispatch.dispatch(outbox.key))
+        received = self.sqs.receive_message(QueueUrl=self.queue)["Messages"][0]
+        data = json.loads((ROOT / "examples/worker-fixture.json").read_text(encoding="utf-8"))
+        worker = AnalysisPipeline(self.config, self.jobs, self.objects, FixtureCommentProvider(self.config, data),
+                                  SyntheticPredictor(), WorkerIdentity(code_revision=CODE, model=self.model))
+        event = {"Records": [{"eventSource": "aws:sqs", "messageId": received["MessageId"], "body": received["Body"]}]}
+        self.assertEqual(worker.handle_sqs(event), {"batchItemFailures": []})
+        status = self.client.get(f"/v1/analyses/{analysis_id}")
+        self.assertEqual(status.status_code, 200)
+        self.assert_schema(status.json(), "Analysis")
+        self.assertEqual(status.json()["state"], "SUCCEEDED")
+        self.assertEqual(status.json()["progress"], {"fetched": 5, "duplicates_removed": 1, "analyzed": 3, "skipped": 1})
+        download = self.client.get(f"/v1/analyses/{analysis_id}/result")
+        self.assertEqual(download.status_code, 200)
+        self.assert_schema(download.json(), "ResultDownload")
+        finished = self.jobs.get_work(work.work_id)
+        self.assert_schema(self.objects.read(finished, finished.result), "AnalysisResult")
+        cached = self.submit(token="fixture-bob")
+        self.assertEqual(cached.status_code, 200)
+        self.assertTrue(cached.json()["cache_hit"])
+        self.assert_error(self.client.get(f"/v1/analyses/{analysis_id}", headers={"Authorization": "Bearer fixture-bob"}), 404, "NOT_FOUND")
+
     def setUp(self):
         super().setUp()
         self.model = self.model.model_copy(update={"release_id": release_fingerprint(self.model, CODE)})

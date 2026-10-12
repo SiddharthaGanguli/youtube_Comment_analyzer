@@ -83,6 +83,21 @@ class PredictionTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 PredictionService(replace(self.config, parameters={**self.config.parameters, **change}))
 
+    def test_native_thread_override_preserves_predictions_and_training_recipe(self):
+        normal = PredictionService(self.config)
+        runtime = PredictionService(self.config, native_thread_limit=1)
+        comments = ["wonderful video", "terrible video", None, "unknownquokka"]
+        self.assertEqual(normal.predict(comments), runtime.predict(comments))
+        self.assertEqual(normal.native_thread_limit, normal.training["parameters"]["thread_limit"])
+        self.assertEqual(runtime.native_thread_limit, 1)
+        self.assertEqual(runtime.training, normal.training)
+        with patch("src.Sentiment_analysis.services.prediction.threadpool_limits", wraps=__import__("threadpoolctl").threadpool_limits) as limits:
+            runtime.predict(comments)
+        self.assertTrue(all(call.kwargs["limits"] == 1 for call in limits.call_args_list))
+        for invalid in [True, 0, -1, 1.5, "1"]:
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                PredictionService(self.config, native_thread_limit=invalid)
+
     def test_checksum_is_checked_before_loading(self):
         with tempfile.TemporaryDirectory() as directory:
             corrupt = Path(directory) / "model.joblib"

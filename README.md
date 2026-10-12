@@ -5,7 +5,7 @@ YouTube comment sentiment analysis with reproducible data and model pipelines.
 The Chrome extension design is in [extension/](extension/README.md): a small
 popup that opens a full dashboard tab. It currently uses clearly labeled sample
 comments, with sentiment charts, coverage, filters, comment details and CSV
-export. Live analysis and the AWS backend are the next implementation phase.
+export. Connecting live analysis and deploying the AWS backend remain pending.
 
 The [serving system design](docs/system-design.md) targets 1,000 active users
 with separate API and model workers, bounded YouTube fetching, shared public
@@ -15,14 +15,18 @@ guide the backend implementation; deployment remains pending.
 Live YouTube sentiment analysis requires the analytics-use approval described
 in the design before it can be enabled.
 
-Backend steps 1 through 3 are implemented: [serving settings, storage and API routes](docs/serving-configuration.md)
+Backend steps 1 through 4 are implemented: [serving settings, storage, API and fixture worker](docs/serving-configuration.md)
 validate configuration, persist owned jobs, coordinate worker leases and queue
 delivery, and store private results with bounded retention. AWS adapter checks
 use local fixtures. FastAPI exposes owned submission/status/download/deletion,
 current model metadata and liveness, with scope checks and safe error envelopes.
 No serving resources are deployed. Run
 `python -m src.Sentiment_analysis.config.serving` from the project environment
-to check `config/serving.yaml`. The fixture model worker is next.
+to check `config/serving.yaml`. The worker resumes page/batch checkpoints, uses
+the shared predictor with one native thread, and publishes validated private
+results under the current lease. It currently accepts explicit development
+fixtures. Cognito deployment, live YouTube fetching and extension connection
+remain later steps.
 
 To inspect the API locally without connecting to AWS:
 
@@ -137,8 +141,8 @@ review flags, skipped inputs, and coverage. Try it with:
 
 The JSON result is saved under `artifacts/model_prediction/`. See
 [prediction usage and the response contract](docs/prediction.md). The extension
-remains a design preview; YouTube retrieval, the HTTP backend, and AWS deployment
-are still to be built.
+remains a design preview; live YouTube retrieval, connecting the extension to
+the HTTP backend, and AWS deployment are still to be built.
 
 ## MLflow experiments and stage artifacts
 

@@ -1,4 +1,4 @@
-# Backend settings, storage and API
+# Backend settings, storage, API and fixture worker
 
 The backend starts with three pieces: a settings file, Python types describing
 those settings and our API data, and a manager that joins the two. We can check
@@ -9,7 +9,10 @@ these pieces before any HTTP server, queue worker, or AWS resource exists.
 Start with [config/serving.yaml](../config/serving.yaml). This is the backend's
 settings file. It contains worker limits, sample limits, retention, authentication
 references and model fingerprints. The training settings remain in `config.yaml`
-and `params.yaml`; serving changes do not become DVC training dependencies.
+and `params.yaml`; serving YAML changes do not invalidate DVC training. The
+shared prediction source is an existing training dependency, so its runtime
+thread override requires refreshing that dependency's lock metadata. The saved
+training recipe and weights stay unchanged; this does not represent retraining.
 
 Next read [entity/serving.py](../src/Sentiment_analysis/entity/serving.py).
 Each class describes one YAML section. For example, `WorkerSettings` turns
@@ -450,6 +453,152 @@ deletion (`204`); these now match the implementation. The test dependency file
 stays separate from deployed requirements. These tests establish HTTP behavior,
 not 1,000-user AWS capacity.
 
-The next stage is the fixture worker and shared PredictionService integration.
-Live YouTube fetching, extension sign-in and AWS deployment remain later steps
-in the [backend plan](backend-plan.md).
+The fixture worker is implemented in the next section. Live YouTube fetching,
+extension sign-in and AWS deployment remain later steps in the
+[backend plan](backend-plan.md).
+
+## Fixture worker and shared predictions
+
+The API can now hand a fixture analysis to a worker and read the finished result.
+This stage exercises that complete flow without a live YouTube request or a
+deployed AWS service. Start with the synthetic pages in
+[worker-fixture.json](../examples/worker-fixture.json): five received rows contain
+four unique IDs because one comment appears on both pages.
+
+### Configuration and model identity
+
+The existing `model` and `worker` sections in `config/serving.yaml` control this
+stage. `model.text_column` identifies the trained text column and is checked
+against the loaded bundle. `worker.maximum_attempts` allows five processing
+attempts across all dispatch generations; a sixth claim fails the job before
+another fetch. This cap still works when recovery sends a new SQS message and
+its receive count starts over.
+
+[entity/worker.py](../src/Sentiment_analysis/entity/worker.py) defines the image
+identity, provider page, captured comment and private checkpoint. A checkpoint
+holds video metadata, page history, the current call's attempt count, pending
+comments and completed predictions. Every transition revalidates counts, unique
+IDs, timestamps and contiguous prediction indices. Oversized raw text becomes
+`text_too_long` with no retained text before normalization or S3 checkpointing.
+
+[config/worker.py](../src/Sentiment_analysis/config/worker.py) builds the prediction
+configuration after checking the assigned release, image code revision and
+packaged training report. `PredictionService` then verifies the model checksum,
+package versions, bundle metadata, preprocessing recipe, label mapping and text
+column before prediction. A missing packaged model fails; it never triggers a
+DVC download in the worker.
+
+The shared service accepts `native_thread_limit=1` for serving. Omitting it keeps
+the training report's original thread limit. The override changes no saved
+parameter, preprocessing recipe or model weight. Batch size and review threshold
+come from the serving settings. Each warm runtime loads one service and reuses
+it across jobs; serving imports no MLflow or notebook stack.
+
+### Fetch, checkpoint and infer
+
+[components/analysis.py](../src/Sentiment_analysis/components/analysis.py) handles
+deduplication, batches, index matching and result assembly.
+[pipeline/analysis.py](../src/Sentiment_analysis/pipeline/analysis.py) handles
+leases and I/O in this order:
+
+1. Check the message release and conditionally claim the queued job.
+2. Restore and validate the last published checkpoint against accepted work.
+3. Spend one global allowance, save the logical call's attempt counter, then
+   fetch metadata or a page. A crash before the fetch may waste an allowance;
+   it cannot create a fetch outside the allowance or retry limit.
+4. Save each accepted page, its next token and progress under the current lease.
+5. Finish the bounded raw sample, then predict each pending batch and checkpoint
+   its completed rows and updated counts.
+6. Enter `SAVING`, upload the validated result and conditionally publish its
+   immutable pointer. Only that terminal transaction releases active capacity
+   and the unused reservation.
+
+Duplicate IDs are removed in first-seen order. They still count toward the raw
+requested limit, so fetching never refills them. Each call requests the smaller
+of page size and remaining raw count. Page count is bounded by
+`ceil(requested/page_size)`; a short-page sequence that reaches that bound has
+an explicit partial reason. Repeated page tokens fail instead of looping.
+Reaching the raw limit normally succeeds with `has_more=true` when appropriate.
+
+Predictions are joined by returned input index, even if returned in another
+order. Processed rows move out of `pending` and into `predictions`, preserving
+their original result indices. Empty text, unknown vocabulary and oversized
+text remain explicit skips. Counts reconcile against the actual rows; coverage
+is analyzed divided by unique received. Confidence remains the highest class
+score, with no claim that it measures calibrated correctness.
+
+### Failures and recovery
+
+A transient provider failure has at most three attempts for that logical call,
+including across crashes. Retries use bounded jittered delays. Exhaustion after
+some accepted comments produces `PARTIAL`; exhaustion with no sample produces
+`FAILED`. Missing/nonpublic videos and disabled comments fail explicitly.
+An empty public sample succeeds with zero rows. A provider error message is
+never copied into the public failure or logs.
+
+The worker checks the overall deadline, current lease and invocation time around
+operations. At the soft limit, or with insufficient Lambda time remaining, it
+requeues through the durable outbox while keeping the existing checkpoint and
+overall deadline. Global fetch throttling also yields before a provider call.
+Storage/model runtime failures request bounded recovery. Invalid checkpoints,
+invalid prediction rows and byte-limit violations fail explicitly.
+
+Heartbeats occur between bounded calls and batches. The checkpoint object is
+uploaded before its pointer and progress are committed together. A crash after
+upload can leave an orphan; recovery uses only the published pointer. A crash
+after inference publication resumes the remaining batch, while a crash after
+result upload can republish from completed predictions without refetching.
+A stale worker uses its own old token and cannot recover or replace a newer
+worker's lease. S3 uploads alone never make a result available.
+
+### Lambda entry point and checks
+
+[workers/analyze.py](../src/Sentiment_analysis/workers/analyze.py) exposes the SQS
+handler. Failed initialization or unhandled records return
+`batchItemFailures`, using the SQS message IDs. Deployment must enable
+[ReportBatchItemFailures](https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-errorhandling.html)
+and use the configured batch size of one. An acknowledged recoverable job already
+has a durable recovery outbox record; failed recovery leaves the record retryable.
+Malformed or misrouted records are not silently accepted.
+
+[config/worker_runtime.py](../src/Sentiment_analysis/config/worker_runtime.py)
+creates the warm pipeline lazily. Importing the handler loads neither the model
+nor AWS clients. Its development fixture mode requires an explicit
+`SERVING_FIXTURE_PATH`, assigned serving/table settings and a trusted
+`SERVING_IMAGE_CODE_REVISION` matching the packaged code. It uses AWS roles/default
+credential resolution, rather than the local DVC credentials. This Lambda factory
+is not a local AWS emulator; the tests below provide the emulator.
+
+Production refuses fixture providers. No live adapter is wired yet, and the
+development YAML still has no assigned release/table. Tests derive synthetic
+release identities in memory; they do not promote a deployed model or change
+the development YAML to appear deployment-ready.
+
+The deployed worker dependencies are in
+[requirements-worker.txt](../requirements-worker.txt). Moto is test-only.
+Run the storage/API/worker protocol suite with:
+
+```powershell
+uv pip install --python .venv/Scripts/python.exe -r requirements-serving-test.txt
+.\.venv\Scripts\python.exe -m unittest discover -s tests/serving -v
+```
+
+The real-model checks are in `tests/test_worker_model.py` and
+`tests/test_prediction.py`. They train a tiny local fixture, compare worker rows
+to the direct shared predictor, check bundle guards and verify one model load
+across successive jobs. Run them in an environment where the pinned native
+packages can load:
+
+```powershell
+uv pip install --python .venv/Scripts/python.exe -r requirements-worker.txt -r requirements-serving-test.txt -r requirements-eda.txt
+.\.venv\Scripts\python.exe -m unittest tests.test_prediction tests.test_worker_model -v
+```
+
+GitHub's Linux CI runs those checks and the full repository suite. Windows
+Application Control currently blocks this machine's scikit-learn DLL; local
+protocol tests use synthetic predictions. These checks establish worker behavior
+and shared-model integration, not production capacity or live YouTube accuracy.
+
+The next stage covers deployed authentication, operational metrics and the live
+provider adapter. Extension sign-in and the measured 1,000-user AWS deployment
+remain later steps in the backend plan.
