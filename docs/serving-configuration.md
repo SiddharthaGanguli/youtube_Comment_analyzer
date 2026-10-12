@@ -1,4 +1,4 @@
-# Backend settings, entities and durable storage
+# Backend settings, storage and API
 
 The backend starts with three pieces: a settings file, Python types describing
 those settings and our API data, and a manager that joins the two. We can check
@@ -78,7 +78,7 @@ resources, IAM permissions, Google quota or the approval itself.
 [entity/analysis.py](../src/Sentiment_analysis/entity/analysis.py) implements the
 data shapes in the [OpenAPI contract](backend-contract.yaml). Pydantic is used
 here because the later FastAPI routes can use the same validated models.
-There are no HTTP routes in this stage.
+HTTP routes now use these entities in the API stage described below.
 The later worker adapter will join shared-service predictions to YouTube
 metadata to build the serving result envelope. Its cross-field checks use
 [Pydantic model validators](https://pydantic.dev/docs/validation/latest/concepts/validators/).
@@ -180,7 +180,8 @@ This follows DynamoDB's [conditional transaction behavior](https://docs.aws.amaz
 Read/submission/provider limits use fixed minute or second counters. Boundary
 bursts can straddle two windows; these are fixed-window caps, not a promise of
 an exact rolling-window rate. `charge_read()` is ready for the authenticated API
-to call. There are no HTTP endpoints or Cognito integration in this stage.
+to call. The storage stage added no HTTP endpoints; the API stage below adds
+routes and consumes verified Cognito context. AWS auth deployment remains pending.
 
 ### Why there is an outbox
 
@@ -308,6 +309,147 @@ These checks verify the adapters and failure protocol without a live AWS account
 They are not an AWS capacity measurement; the planned load/deployment checks
 still need to run against the eventual environment.
 
-The next stage is the FastAPI pipeline: create/status/download/delete/current
-model/liveness routes using these repositories. Model inference and live
-YouTube fetching remain later steps in the [backend plan](backend-plan.md).
+## API routes and local running
+
+The API accepts work and returns progress; the queue worker does the longer
+fetching and inference. Keeping that boundary lets the HTTP process answer
+other people while an analysis is running. The API package imports no NumPy,
+pandas, scikit-learn or MLflow, and it never restores DVC or reads model weights.
+
+Read [entity/api.py](../src/Sentiment_analysis/entity/api.py) first. `Principal`
+represents an authenticated owner and scopes. `Liveness` is the small public
+health response. `ReleaseManifest` binds model/preprocessing checksums, the
+inference code revision, review threshold and schema to a deterministic release
+ID. These metadata declarations still require worker-bundle verification before
+deployment; no real release is assigned in the current development YAML.
+
+Then read [repositories/models.py](../src/Sentiment_analysis/repositories/models.py).
+It keeps immutable `MODEL#release-id` manifests and a conditional `MODEL#CURRENT`
+pointer. Registration refuses to change an existing manifest. Promotion requires
+the expected current release so an operator cannot silently overwrite another
+promotion. The later release workflow must verify the image/queue before calling
+this internal method. There is no public promotion endpoint.
+
+[pipeline/api.py](../src/Sentiment_analysis/pipeline/api.py) contains the use cases.
+It joins the job repository, private object store and release registry. The
+current release must match the API's serving settings before a submission is
+accepted. A status/download read also expires a job whose overall deadline has
+passed, even if the scheduled reconciler has not run yet.
+
+[api/routes.py](../src/Sentiment_analysis/api/routes.py) then connects those use
+cases to HTTP. The routes are deliberately short: authenticate, validate typed
+input, call the pipeline and return its typed result. Boto3 operations run in
+FastAPI's synchronous route thread pool, rather than blocking its async request
+loop. No route fetches comments, sends SQS messages or predicts sentiment.
+
+| Route | Required scope | Normal response |
+| --- | --- | --- |
+| `POST /v1/analyses` | `analysis/write` | `202` for queued/running work; `200` for completed cache/replay |
+| `GET /v1/analyses/{id}` | `analysis/read` | `200` owned status, including failed jobs |
+| `GET /v1/analyses/{id}/result` | `analysis/read` | `200` signed S3 download descriptor |
+| `DELETE /v1/analyses/{id}` | `analysis/write` | `204`, also for a repeated owned deletion |
+| `GET /v1/models/current` | `analysis/read` | `200` release/evaluation metadata |
+| `GET /health/live` | Public | `200` with `{"status":"ok"}` |
+
+An accepted response includes the relative owned status path in `Location` and
+the first polling delay in `Retry-After`. Download descriptors use `no-store`;
+the API does not load or proxy the comment JSON. Failed jobs have a readable
+status but their result endpoint returns `409 ANALYSIS_FAILED`. Pending results
+return `409 RESULT_NOT_READY`. Expired/removed owned references return `410`, then
+`404` after purge. Foreign and unknown IDs both return `404`.
+
+### Where authentication comes from
+
+[api/auth.py](../src/Sentiment_analysis/api/auth.py) consumes the verified JWT
+claims/scopes that API Gateway places in Mangum's `aws.event` connection scope.
+It checks the Cognito issuer, public client, access-token use, expiry, owner UUID
+and the route's scope. It never treats an `X-User-Id` header as identity or decodes
+an unsigned bearer string into a trusted user.
+
+API Gateway is the signature-verification boundary. Deployment must use its
+[JWT authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html),
+set the required scope on each protected route, and restrict Lambda invocation
+permissions to the intended HTTP API. A Lambda function URL or arbitrary direct
+invoker must not become an alternate authenticated entry point. The app's scope
+check adds a second check; it does not replace gateway signature verification.
+Mangum documents how it exposes the [event/context in ASGI scope](https://mangum.fastapiexpert.com/adapter/).
+
+The test gateway stand-in lives only in `tests/serving/test_api.py`. It maps
+synthetic tokens to synthetic verified contexts. It is not a runtime auth mode.
+Similarly, `APIPipeline(fixture_mode=True)` permits fixture admission only in
+development. The deployed `api_runtime()` does not enable it. Live submissions
+remain `503 LIVE_ANALYSIS_DISABLED` until the serving settings allow them;
+existing status/download/delete operations do not require live fetching.
+
+### Request and error handling
+
+[api/middleware.py](../src/Sentiment_analysis/api/middleware.py) checks the POST
+body before JSON/Pydantic validation. It counts actual bytes, including streamed
+chunks, so a missing or false `Content-Length` cannot bypass the 2,048-byte cap.
+Duplicate JSON fields/retry headers, unsupported content encoding, malformed
+JSON and nonfinite constants are rejected. Rejected values are never echoed.
+
+[api/errors.py](../src/Sentiment_analysis/api/errors.py) maps domain errors to
+the contract's safe envelope. It includes a server-generated request ID, retry
+information when useful, and the next Pacific midnight for daily quota failures.
+Validation errors return `422`, body overflow returns `413`, user limits return
+`429`, and busy/disabled/dependency/quota conditions return `503`. Unexpected
+dependency errors produce a generic response and a generic warning; exception
+text, tokens and signed URLs stay out of the response and application logs.
+API Gateway can still generate its own authentication/throttle error body.
+
+Authenticated GETs and DELETEs share the owner's read budget. POST admission
+uses the existing submission/active/global counters. A denied authentication,
+missing scope or invalid body does not create a job or reserve provider quota.
+CORS permits only the exact configured extension origins and exposes polling
+headers; bearer authentication is still required for actual protected requests.
+
+### Start the local app
+
+```powershell
+uv pip install --python .venv/Scripts/python.exe -r requirements-serving.txt
+.\.venv\Scripts\python.exe -m uvicorn src.Sentiment_analysis.api.app:app --host 127.0.0.1 --port 8000 --no-access-log
+```
+
+Open `http://127.0.0.1:8000/health/live` for the process check and
+`http://127.0.0.1:8000/docs` for development Swagger. Creating the app and reading
+these routes does not initialize AWS clients. Liveness confirms that HTTP can
+respond; it does not claim storage, quota or workers are ready.
+
+Local Swagger bearer entry cannot create a gateway-verified context, so protected
+requests return `401` on the default standalone server. Use the offline fixture
+tests below to exercise the complete HTTP flow until Cognito/gateway deployment
+exists. Development exposes `/docs` and `/openapi.json`; production keeps those
+public documentation routes disabled.
+
+[api/app.py](../src/Sentiment_analysis/api/app.py) creates the app and its lazy
+pipeline factory. [api/lambda_handler.py](../src/Sentiment_analysis/api/lambda_handler.py)
+exports the Mangum handler for HTTP API payload format 2.0, with lifespan events
+off. `config.serving_runtime.api_runtime()` wires only DynamoDB and S3 signing
+clients through AWS roles. No queue registry or YouTube key is needed by the API.
+Deployment must assign the table/auth/release settings and seed a verified model
+manifest before protected routes can operate.
+
+### Run the API checks
+
+```powershell
+uv pip install --python .venv/Scripts/python.exe -r requirements-serving-test.txt
+.\.venv\Scripts\python.exe -m unittest tests.serving.test_api -v
+```
+
+Tests use FastAPI's in-process [TestClient](https://fastapi.tiangolo.com/reference/testclient/)
+with the pinned HTTP test client, mocked AWS and synthetic verified JWT contexts.
+They check ownership, read/write scopes, unsafe bodies/headers, retries, cache
+hits, downloads, deletion, deadlines, quota resets, dependency failures, CORS
+and the actual HTTP API v2/Mangum response shape. Responses validate against both
+the written contract and generated OpenAPI schemas; operation IDs, status codes,
+retry-key parameters and security declarations are compared too.
+
+The contract was clarified for malformed path UUIDs (`422`) and repeated owned
+deletion (`204`); these now match the implementation. The test dependency file
+stays separate from deployed requirements. These tests establish HTTP behavior,
+not 1,000-user AWS capacity.
+
+The next stage is the fixture worker and shared PredictionService integration.
+Live YouTube fetching, extension sign-in and AWS deployment remain later steps
+in the [backend plan](backend-plan.md).

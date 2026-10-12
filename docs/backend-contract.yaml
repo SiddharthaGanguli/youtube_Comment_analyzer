@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Comment Lens serving API
-  version: 0.1.0-design
+  version: 0.1.0
   description: |
-    Proposed contract, not an implemented service. Authenticated users submit
+    Implemented and fixture-tested API contract; serving is not deployed yet. Authenticated users submit
     public YouTube videos and receive owned references to asynchronous analyses.
     Results sample latest top-level comments, not every comment on a video.
     Live fetching requires recorded YouTube analytics-use approval.
@@ -86,6 +86,7 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '410': {$ref: '#/components/responses/Expired'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
         '429': {$ref: '#/components/responses/RateLimited'}
         '503': {$ref: '#/components/responses/Unavailable'}
     delete:
@@ -95,14 +96,15 @@ paths:
       description: |
         Requires analysis/write scope. Does not cancel shared public work or
         delete other owners' references. Previously issued download URLs can
-        remain valid for up to five minutes. Repeat deletion of an unknown or
-        foreign ID returns 404 without revealing ownership.
+        remain valid for up to five minutes. Repeat deletion of an owned tombstone
+        returns 204 until expiry. Unknown or foreign IDs return 404.
       responses:
         '204': {description: Owned reference removed}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '410': {$ref: '#/components/responses/Expired'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
         '429': {$ref: '#/components/responses/RateLimited'}
         '503': {$ref: '#/components/responses/Unavailable'}
   /v1/analyses/{analysis_id}/result:
@@ -132,6 +134,7 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '410': {$ref: '#/components/responses/Expired'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
         '429': {$ref: '#/components/responses/RateLimited'}
         '503': {$ref: '#/components/responses/Unavailable'}
   /v1/models/current:
@@ -201,7 +204,7 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorEnvelope'}
     NotFound:
-      description: Unknown, deleted, or foreign analysis reference.
+      description: Unknown, purged, or foreign analysis reference.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorEnvelope'}
@@ -211,7 +214,7 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorEnvelope'}
     Expired:
-      description: Owned reference or result expired; cleaned references eventually return 404.
+      description: Owned reference removed or reference/result expired; cleaned references eventually return 404.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorEnvelope'}

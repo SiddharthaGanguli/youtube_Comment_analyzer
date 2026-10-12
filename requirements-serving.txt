@@ -4,3 +4,7 @@ PyYAML==6.0.3
 tzdata==2026.5
 # Match the DVC-compatible version in requirements-tracking.txt.
 boto3==1.43.106
+fastapi==0.143.0
+starlette==1.7.0
+mangum==0.22.0
+uvicorn==0.54.0

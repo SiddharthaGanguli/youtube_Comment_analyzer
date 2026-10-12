@@ -1,10 +1,10 @@
 # Backend implementation plan
 
 The [system design](system-design.md) sets the launch target and its limits.
-This checklist turns that design into small reviewable steps. Steps 1 and 2 are
-implemented and checked with offline fixtures; API, model worker and deployment
-remain pending. Finish and verify
-each step, then commit and push it before starting the next, following the
+This checklist turns that design into small reviewable steps. Steps 1 through 3 are
+implemented and checked with offline fixtures; model worker and deployment
+remain pending. Finish and verify each step, then commit and push it before
+starting the next, following the
 project's existing workflow.
 
 Keep the offline training pipeline intact. Serving gets its own typed settings
@@ -52,15 +52,20 @@ AWS table, queue, IAM role, schedule or live fetch has been deployed.
 
 ## 3. API pipeline and entry point
 
-- [ ] Add FastAPI routes after the entities/repositories, then the API app and
+- [x] Add FastAPI routes after the entities/repositories, then the API app and
   Mangum entry point. Keep external HTTP work and inference outside these routes.
-- [ ] Implement create/status/download/delete/current-model/liveness behavior,
+- [x] Implement create/status/download/delete/current-model/liveness behavior,
   ownership checks, scope checks, limits and safe error envelopes.
-- [ ] Enforce canonical YouTube URL validation and a 2 KiB request-body cap.
-- [ ] Check the implemented OpenAPI schema against the proposed contract and test
+- [x] Enforce canonical YouTube URL validation and a 2 KiB request-body cap.
+- [x] Check the implemented OpenAPI schema against the contract and test
   unknown/foreign IDs, expiration, replay and same-key/different-body conflicts.
 
 Suggested commit: `feat: expose authenticated analysis job endpoints`.
+
+The [API walkthrough](serving-configuration.md#api-routes-and-local-running)
+shows the local command, route flow, trust boundary and disabled live behavior.
+The gateway's verified JWT context is consumed and scope-checked by the app;
+Cognito resources and gateway scope configuration are still deployment work.
 
 ## 4. Fixture worker and shared prediction integration
 
@@ -80,10 +85,11 @@ Suggested commit: `feat: process queued analyses with the shared sentiment model
 ## 5. Authentication and quota controls
 
 - [ ] Configure Cognito public-client PKCE and HTTP API route scopes in AWS CDK.
-- [ ] Implement global/user admission counters, daily reservations, per-attempt
+- [x] Implement global/user admission counters, daily reservations, per-attempt
   spending, unused allowance release and Pacific-time quota rollover.
-- [ ] Validate retries and daylight-saving boundaries; never issue a provider
-  call without an allowance or reset a job's overall deadline.
+- [x] Validate the storage ledger's retries and daylight-saving boundaries.
+- [ ] Integrate spending with the worker: never issue a provider call without
+  an allowance or reset a job's overall deadline.
 - [ ] Add structured metrics/logs without comments, names, tokens or keys.
 
 Suggested commit: `feat: enforce user ownership and bounded YouTube quota use`.
@@ -138,6 +144,7 @@ config/serving.yaml                 # New serving settings, separate from traini
 src/Sentiment_analysis/
   entity/serving.py                 # Typed settings and common validation types
   entity/analysis.py                # Request, status, result and queue entities
+  entity/api.py                     # Principal, liveness and immutable release manifest
   config/serving.py                 # Validate and resolve serving settings
   api/                             # FastAPI schemas, routes, app and Lambda adapter
   repositories/                    # DynamoDB jobs, cache, quota and outbox
@@ -146,6 +153,7 @@ src/Sentiment_analysis/
   components/analysis.py           # Fetch, predict, assemble result
   components/job_delivery.py       # Send durable outbox messages
   pipeline/job_maintenance.py      # Recover leases/deadlines and clean expired data
+  pipeline/api.py                  # HTTP use cases without fetching or inference
   pipeline/analysis.py             # Worker orchestration and terminal outcomes
   workers/                         # Analyze, dispatch and reconcile entry points
 infra/                             # AWS CDK Python and release configuration

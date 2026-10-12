@@ -393,8 +393,10 @@ YouTube accuracy. Preserve these qualifications in model details.
 
 ## HTTP and result contracts
 
-The proposed [OpenAPI contract](backend-contract.yaml) defines the endpoints and
-JSON shapes. It is a specification, not a running API.
+The [OpenAPI contract](backend-contract.yaml) defines the endpoints and JSON
+shapes. The FastAPI routes now implement it and pass offline HTTP/AWS fixture
+checks; the AWS service and live worker are not deployed yet. See the
+[API walkthrough](serving-configuration.md#api-routes-and-local-running).
 
 | Route | Purpose |
 | --- | --- |
@@ -407,7 +409,9 @@ JSON shapes. It is a specification, not a running API.
 
 Every `/v1` route requires a Cognito access token with the appropriate scope.
 Unknown and foreign analysis IDs both return `404`. Expired owned requests
-return `410` until cleanup, then `404`. Download links last at most five minutes
+return `410` until cleanup, then `404`. Removed owned references also return
+`410`; repeating their deletion returns `204` while the unexpired tombstone
+remains. Malformed UUIDs return `422`. Download links last at most five minutes
 and never beyond result expiry. The API reads only authorized S3 pointers, not
 an arbitrary bucket/key supplied by a client. Result JSON is downloaded directly
 from S3 so the API does not repeatedly proxy large comment payloads.

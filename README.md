@@ -15,12 +15,25 @@ guide the backend implementation; deployment remains pending.
 Live YouTube sentiment analysis requires the analytics-use approval described
 in the design before it can be enabled.
 
-Backend steps 1 and 2 are implemented: [serving settings, entities and storage](docs/serving-configuration.md)
+Backend steps 1 through 3 are implemented: [serving settings, storage and API routes](docs/serving-configuration.md)
 validate configuration, persist owned jobs, coordinate worker leases and queue
 delivery, and store private results with bounded retention. AWS adapter checks
-use local fixtures; no serving resources are deployed. Run
+use local fixtures. FastAPI exposes owned submission/status/download/deletion,
+current model metadata and liveness, with scope checks and safe error envelopes.
+No serving resources are deployed. Run
 `python -m src.Sentiment_analysis.config.serving` from the project environment
-to check `config/serving.yaml`. HTTP routes and the fixture model worker are next.
+to check `config/serving.yaml`. The fixture model worker is next.
+
+To inspect the API locally without connecting to AWS:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn src.Sentiment_analysis.api.app:app --host 127.0.0.1 --port 8000 --no-access-log
+```
+
+Open `/docs` or `/health/live` on that local server. Protected routes require the
+gateway's verified JWT context; typing a bearer string into local Swagger does
+not authenticate it. The [API walkthrough](docs/serving-configuration.md#api-routes-and-local-running)
+explains fixture checks and the remaining deployment prerequisites.
 
 ## Run the pipeline
 
