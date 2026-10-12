@@ -1,4 +1,4 @@
-# The first backend step: settings and entities
+# Backend settings, entities and durable storage
 
 The backend starts with three pieces: a settings file, Python types describing
 those settings and our API data, and a manager that joins the two. We can check
@@ -41,7 +41,7 @@ omitting the rejected value from the displayed error.
 
 ## Validate the file locally
 
-From the repository root, install the small settings/schema dependency set:
+From the repository root, install the serving dependency set:
 
 ```powershell
 uv pip install --python .venv/Scripts/python.exe -r requirements-serving.txt
@@ -113,12 +113,13 @@ Use `model_dump(mode="json")` for a JSON-compatible dictionary or
 error retry fields are omitted when absent, matching the contract. Shared result
 entities reject unknown fields, including user ownership data.
 
-## Checks and the next stage
+## Checking settings and contracts
 
-The serving tests use synthetic metadata and temporary YAML files; no dataset,
-model, credentials or AWS service is required. In the project's test environment:
+The serving tests use synthetic metadata, temporary YAML files and mocked AWS
+services. They require no dataset, model, real credentials or AWS account:
 
 ```powershell
+uv pip install --python .venv/Scripts/python.exe -r requirements-serving-test.txt
 .\.venv\Scripts\python.exe -m unittest discover -s tests/serving -t . -v
 ```
 
@@ -127,6 +128,186 @@ secret/region/origin/path guards, YAML ambiguity, canonical URLs, timestamp
 handling, invalid predictions and schema compatibility. The full repository
 suite also runs them through the existing CI workflow.
 
-Next we will build the DynamoDB job/cache/outbox repositories and private S3
-checkpoint/result components. These entities are inputs to that stage; they do
-not yet persist jobs, publish queue messages, verify JWTs or fetch comments.
+## Durable jobs and private storage
+
+An HTTP request lasts a few seconds. Fetching and analyzing comments takes
+longer, and the browser may close while it runs. That is why the next step puts
+the job in durable storage before returning an analysis ID. If an API or worker
+process stops, another process can read the same record and continue.
+
+Two people can analyze the same public video. We keep one internal `work_id`
+and give each person a different owned `analysis_id`. They share the computation,
+while status, download and deletion checks use their own request record. The
+later API must supply the authenticated Cognito subject; an owner supplied in a
+request body will never be used.
+
+Read these files in this order:
+
+1. [entity/jobs.py](../src/Sentiment_analysis/entity/jobs.py) describes the
+   persisted work, owned request and S3 pointer. These internal entities are
+   separate from the public API responses.
+2. [repositories/dynamo.py](../src/Sentiment_analysis/repositories/dynamo.py)
+   provides strongly consistent reads and conditional transactions. Each item
+   has a version. Updating the wrong version makes the whole transaction fail.
+3. [repositories/jobs.py](../src/Sentiment_analysis/repositories/jobs.py)
+   uses those transactions for admission, ownership, leases and quota accounting.
+4. [integrations/objects.py](../src/Sentiment_analysis/integrations/objects.py)
+   stores immutable JSON objects, checks their size/hash, and signs authorized
+   downloads.
+5. [components/job_delivery.py](../src/Sentiment_analysis/components/job_delivery.py)
+   sends outbox messages; [pipeline/job_maintenance.py](../src/Sentiment_analysis/pipeline/job_maintenance.py)
+   coordinates recovery and cleanup.
+6. [workers/dispatch.py](../src/Sentiment_analysis/workers/dispatch.py) and
+   [workers/reconcile.py](../src/Sentiment_analysis/workers/reconcile.py) are the
+   Lambda entry points. Importing them does not create clients or load a model.
+
+### What a submission commits
+
+For a new video sample, `admit()` commits the work record, owned request,
+idempotency record, cache claim, quota reservation, global/user limits, object
+cleanup marker and outbox in one transaction. Either all of them exist or none
+of them does. A competing cache claim causes a re-read so the losing request
+can join the winning job. Running and completed cache joins create their own
+request/idempotency/limit records and check the existing work version without
+rewriting the shared work.
+
+The idempotency key is a UUID scoped to the owner. Retrying the same canonical
+body returns the original analysis ID. Using the same key for another body
+raises `IDEMPOTENCY_CONFLICT`. Even if the first commit succeeds and its network
+response is lost, retrying does not reserve quota or create a second job.
+This follows DynamoDB's [conditional transaction behavior](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html).
+
+Read/submission/provider limits use fixed minute or second counters. Boundary
+bursts can straddle two windows; these are fixed-window caps, not a promise of
+an exact rolling-window rate. `charge_read()` is ready for the authenticated API
+to call. There are no HTTP endpoints or Cognito integration in this stage.
+
+### Why there is an outbox
+
+Saving a job and sending an SQS message are two separate operations. Sending
+first risks a worker seeing a missing job. Saving first risks losing the message
+if the process stops. The outbox solves this by saving the delivery intent in
+the admission transaction.
+
+The dispatcher reads that intent, sends the small `WorkMessage`, then marks the
+outbox sent. A crash after sending leaves it pending, so recovery may send it
+again. The worker claim is conditional, making this duplicate harmless. An
+expired lease creates a new dispatch generation; old generations cannot claim
+the recovered job. Obsolete outbox records leave the due index so they cannot
+block later deliveries.
+
+A claim transaction conflict is retried. If it keeps conflicting, `claim()`
+raises `SYSTEM_BUSY`; the later SQS worker must report a batch failure for it.
+Only a verified duplicate, obsolete generation, terminal or expired job returns
+no claim. A conflict alone must not acknowledge a still-queued job.
+
+### Why workers have fencing tokens
+
+Claiming queued work increments a lease token. Heartbeats, checkpoint pointers,
+quota spending and terminal publication must match the current token and an
+unexpired lease/deadline. If worker A pauses and worker B recovers the job, A's
+token cannot replace B's state or publish its old result.
+
+Each attempt writes under:
+
+```text
+serving/<environment>/work/<work-id>/attempt/<lease-token>/
+  checkpoints/<sha256>.json
+  results/<sha256>.json
+```
+
+S3 writes use `IfNoneMatch="*"`, JSON content type and AES256 encryption. The
+hash is computed over the exact serialized bytes, and the 10 MiB ceiling is
+checked before upload. Retrying identical bytes verifies the existing object.
+AWS documents [conditional S3 writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html).
+
+Uploading is only the first half of publication. A terminal transaction publishes
+the pointer and releases the global active slot and unused quota exactly once.
+The preceding `SAVING` state and counters must reconcile. A lost lease leaves an
+unpublished attempt object for cleanup; it does not make the result available.
+
+Quota units move from reserved to spent **before** each provider attempt. Failed
+calls are never refunded. Retry invocations reuse the remaining allowance.
+Pacific midnight moves that remaining reservation to the new day's counter in
+the same transaction as the next debit, or refuses the attempt. The code handles
+daylight-saving changes. This accounting is fixture-tested; the actual Google
+project allocation and permission to run live analysis remain unverified.
+
+### Ownership, expiration and cleanup
+
+Unknown and foreign request IDs produce the same `NOT_FOUND` error.
+An expired/deleted owned reference produces `EXPIRED`. Deletion removes
+that owner's active slot and access; it does not cancel work shared with others.
+Download signing reads the owned request again and accepts only its published
+result pointer. Links last at most 300 seconds, stop at request/result expiry,
+and can be shortened to match temporary credential expiry. A previously issued
+link remains usable until its own expiry.
+
+At result expiry, an `OBJECTS#work-id` cleanup marker causes the schedule to
+remove all objects for that work, including orphaned attempts, noncurrent
+versions and delete markers. This matters when the existing dataset bucket uses
+versioning: [deleting only a current key can retain older versions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeletingObjects.html).
+Cleanup touches only the specific serving work prefix. It never deletes the
+DVC dataset prefix.
+
+Expired request/work metadata stays for one additional hour so the API can
+distinguish expiration from an unknown ID, then gets purged. If S3 deletion
+fails, the cleanup marker and work metadata stay for retry. Empty quota audit
+records are cleaned eight Pacific midnights after their date; counters with
+outstanding reservations are kept. The permanent global active counter has no
+expiry. Every freshness/lease/retention decision checks timestamps directly;
+DynamoDB TTL deletion is not part of correctness.
+
+### Table and runtime wiring for deployment
+
+The future CDK table must use string partition key `pk` and these indexes, all
+with `ALL` projection:
+
+| Index | Partition key | Sort key | Purpose |
+| --- | --- | --- | --- |
+| `DueIndex` | `due_pk` (string) | `due_at` (number) | Pending outbox and work lease/deadline recovery |
+| `CleanupIndex` | `cleanup_pk` (string) | `cleanup_at` (number) | Expired objects and metadata |
+| `OwnerIndex` | `owner_pk` (string) | `created_at` (number) | Paginated owned request lookup |
+
+Due/cleanup queries process up to 100 items per family per invocation. More due
+items remain for the next minute; recovery lag and cleanup backlog need alarms
+and load measurement before release. Index reads may lag, so actions re-read
+the base item and check its version. Polling uses direct request/work reads.
+
+The table stream calls `workers.dispatch.handler` with partial batch failure
+reporting enabled. A minute schedule calls `workers.reconcile.handler`. The
+schedule returns safe aggregate counts and reports an invocation failure if any
+operation needs retry. IAM roles, triggers and schedules have not been created.
+
+[config/serving_runtime.py](../src/Sentiment_analysis/config/serving_runtime.py)
+loads the serving YAML lazily and uses AWS role credentials. Deployment must
+assign `storage.table_name`. `SERVING_CONFIG_PATH` selects its config file, and
+`SERVING_QUEUE_REGISTRY_JSON` maps immutable release IDs to distinct regional
+standard SQS queue URLs. Missing/wrong-region/shared/FIFO queues are rejected.
+The runtime sets bounded SDK timeouts/retries and uses SigV4 for S3 downloads.
+It never reads the local DVC credentials file.
+
+The later IAM setup must grant prefix-scoped S3 writes/reads plus
+`s3:ListBucketVersions`, `s3:DeleteObject` and `s3:DeleteObjectVersion` to the
+cleanup role. Keep the bucket private with public-access blocking and a
+seven-day lifecycle backstop covering current/noncurrent objects. The existing
+DVC IAM policy is separate and does not provide these serving permissions.
+
+### Reproduce the storage checks
+
+```powershell
+uv pip install --python .venv/Scripts/python.exe -r requirements-serving-test.txt
+.\.venv\Scripts\python.exe -m unittest tests.serving.test_jobs -v
+```
+
+The tests inject fake AWS credentials, use Moto's in-process DynamoDB/S3/SQS
+implementations, and control the clock. They cover transaction conflicts,
+response loss, shared ownership, idempotency, cache expiry, burst caps, stale
+leases/results, dispatch crashes, quota rollover, versioned cleanup and signing.
+These checks verify the adapters and failure protocol without a live AWS account.
+They are not an AWS capacity measurement; the planned load/deployment checks
+still need to run against the eventual environment.
+
+The next stage is the FastAPI pipeline: create/status/download/delete/current
+model/liveness routes using these repositories. Model inference and live
+YouTube fetching remain later steps in the [backend plan](backend-plan.md).

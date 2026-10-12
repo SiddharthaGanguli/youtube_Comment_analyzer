@@ -1,4 +1,6 @@
-# Lightweight serving settings and contracts; no training/notebook dependencies.
+# Serving settings, contracts and AWS adapters; no training/notebook dependencies.
 pydantic==2.14.0
 PyYAML==6.0.3
 tzdata==2026.5
+# Match the DVC-compatible version in requirements-tracking.txt.
+boto3==1.43.106

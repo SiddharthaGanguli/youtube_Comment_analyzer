@@ -1,0 +1,3 @@
+# Test-only AWS emulation. Never package Moto in deployed Lambda functions.
+-r requirements-serving.txt
+moto[dynamodb,s3,sqs]==5.2.2

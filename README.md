@@ -11,15 +11,16 @@ The [serving system design](docs/system-design.md) targets 1,000 active users
 with separate API and model workers, bounded YouTube fetching, shared public
 results, durable jobs, and a low initial AWS cost. The
 [API contract](docs/backend-contract.yaml) and [backend plan](docs/backend-plan.md)
-are ready for implementation; the backend and deployment remain pending.
+guide the backend implementation; deployment remains pending.
 Live YouTube sentiment analysis requires the analytics-use approval described
 in the design before it can be enabled.
 
-Backend step 1 is complete: [serving settings and typed entities](docs/serving-configuration.md)
-validate configuration and request/result contracts locally. Run
+Backend steps 1 and 2 are implemented: [serving settings, entities and storage](docs/serving-configuration.md)
+validate configuration, persist owned jobs, coordinate worker leases and queue
+delivery, and store private results with bounded retention. AWS adapter checks
+use local fixtures; no serving resources are deployed. Run
 `python -m src.Sentiment_analysis.config.serving` from the project environment
-to check `config/serving.yaml`. Job storage, HTTP routes, workers and deployment
-are the next stages.
+to check `config/serving.yaml`. HTTP routes and the fixture model worker are next.
 
 ## Run the pipeline
 

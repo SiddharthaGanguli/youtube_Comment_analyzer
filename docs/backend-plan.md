@@ -1,8 +1,9 @@
 # Backend implementation plan
 
 The [system design](system-design.md) sets the launch target and its limits.
-This checklist turns that design into small reviewable steps. Step 1 is complete;
-the storage, API, worker and deployment stages remain pending. Finish and verify
+This checklist turns that design into small reviewable steps. Steps 1 and 2 are
+implemented and checked with offline fixtures; API, model worker and deployment
+remain pending. Finish and verify
 each step, then commit and push it before starting the next, following the
 project's existing workflow.
 
@@ -31,18 +32,23 @@ Suggested commit: `feat: add typed serving configuration and API entities`.
 
 ## 2. Durable job and storage components
 
-- [ ] Add DynamoDB repositories for owned requests, conditional cache claims,
+- [x] Add DynamoDB repositories for owned requests, conditional cache claims,
   idempotency, fenced work leases, quota counters, active slots and the outbox.
-- [ ] Add private S3 checkpoint/result components with immutable attempt keys,
+- [x] Add private S3 checkpoint/result components with immutable attempt keys,
   hashes, byte ceilings and expiry-aware download signing.
-- [ ] Implement transactional admission/terminal release; reclaim stale slots
+- [x] Implement transactional admission/terminal release; reclaim stale slots
   without depending on TTL deletion.
-- [ ] Add dispatcher and scheduled reconciliation for pending outbox, expired
+- [x] Add dispatcher and scheduled reconciliation for pending outbox, expired
   leases, deadlines and data cleanup.
-- [ ] Verify conflicting submissions, duplicate dispatch, stale-worker writes,
+- [x] Verify conflicting submissions, duplicate dispatch, stale-worker writes,
   and failures between persistence/publication operations.
 
 Suggested commit: `feat: persist analysis jobs with idempotent queue delivery`.
+
+The [storage walkthrough](serving-configuration.md#durable-jobs-and-private-storage)
+explains the item keys, transaction boundaries, test command and deployment
+requirements. This stage includes callable stream/schedule handlers, but no
+AWS table, queue, IAM role, schedule or live fetch has been deployed.
 
 ## 3. API pipeline and entry point
 
@@ -138,6 +144,8 @@ src/Sentiment_analysis/
   integrations/                    # YouTube and S3 adapters
   services/prediction.py            # Existing shared inference; add thread override
   components/analysis.py           # Fetch, predict, assemble result
+  components/job_delivery.py       # Send durable outbox messages
+  pipeline/job_maintenance.py      # Recover leases/deadlines and clean expired data
   pipeline/analysis.py             # Worker orchestration and terminal outcomes
   workers/                         # Analyze, dispatch and reconcile entry points
 infra/                             # AWS CDK Python and release configuration
