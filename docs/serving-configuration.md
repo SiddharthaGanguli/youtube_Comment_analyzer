@@ -851,9 +851,31 @@ grant approval. This flow is described in the
 The form asks for the numeric Google Cloud **project number**, available beside
 the project ID on the Cloud dashboard. It also asks for a public HTTPS privacy
 policy and dashboard evidence. The project ID recorded here is
-`applied-polymer-511605-m3`; its numeric project number and a published privacy
-policy URL have not yet been supplied. Use actual values and label preview
-screenshots as demo data.
+`applied-polymer-511605-m3`; `youtube.project_number` records `170746039104`
+from the user's pasted audit form. Confirm their association in Cloud project
+information before submitting. A published privacy-policy URL has not yet been
+supplied. Use actual values and label preview screenshots as demo data.
+
+For the pasted Section 5, use these values:
+
+| Field | Value for this design |
+| --- | --- |
+| Number of projects | 1 |
+| Google Cloud project number | `170746039104`, as supplied |
+| Use case | Analytics & Reporting |
+| Google-account OAuth | No; public YouTube reads use an API key, while application login is planned through Cognito |
+| Expected API usage | Current live usage is zero; the planned working ceiling is 8,000 attempted units/day including retries |
+| Read endpoints | `videos.list` and `commentThreads.list` |
+| Quota amount | No change / Default quota (10k quota points) |
+
+The usage dropdown choices were not included in the pasted form. Match its
+displayed units/range to expected API use; the 1,000-user target is not an API
+request estimate. A configured ceiling is also not a measured daily forecast.
+
+The form still requires privacy-policy screenshots, a homepage showing its
+policy link and YouTube attribution, terms documentation and analytics
+dashboard evidence. Those public policy pages and evidence files have not yet
+been prepared. Supply real review URLs and label preview data accurately.
 
 This draft describes the current implementation and proposed live behavior:
 

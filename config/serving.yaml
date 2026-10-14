@@ -18,6 +18,7 @@ model:
 
 youtube:
   project_id: applied-polymer-511605-m3
+  project_number: '170746039104'
   live_enabled: false
   analytics_use_approved: false
   approval_reference: null
