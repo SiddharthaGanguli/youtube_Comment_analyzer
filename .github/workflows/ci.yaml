@@ -30,6 +30,6 @@ jobs:
       - name: Check stage behavior on small fixtures
         env:
           MPLCONFIGDIR: ${{ runner.temp }}/matplotlib
-        run: python -m unittest discover -s tests -v
+        run: python -m unittest discover -s tests -t . -v
       - name: Check extension behavior
         run: node --test extension/tests/lib.test.mjs extension/tests/auth-pkce.test.mjs

@@ -62,7 +62,7 @@ Its report is saved under `artifacts/data_ingestion/`; a corrupt local file fail
 verification rather than being overwritten. Run the stage checks with:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v
 ```
 
 Validation checks the source checksum, required columns, allowed numeric labels,

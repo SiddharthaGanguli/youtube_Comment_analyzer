@@ -747,6 +747,10 @@ random values, replay/state/expiry failures and safe exchange destinations.
 Serving checks cover privacy, sink failures and unchanged transaction behavior.
 Linux CI also runs the full model pipeline and extension suite.
 
+Full-suite discovery uses `python -m unittest discover -s tests -t . -v`.
+The explicit repository top level keeps `tests.infra` distinct from the
+application's `infra` package.
+
 Step 5 is implemented and fixture-tested, but sign-in is not deployed or connected.
 Before deployment, supply the stable extension ID and existing API function,
 copy real public outputs into serving/extension settings, audit invocation
