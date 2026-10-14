@@ -28,6 +28,10 @@ youtube:
   default_max_comments: 1000
   maximum_comments: 1000
   page_size: 100
+  connect_timeout_seconds: 3
+  read_timeout_seconds: 5
+  http_deadline_seconds: 12
+  maximum_response_bytes: 2097152
   maximum_http_attempts_per_call: 3
   global_http_attempts_per_second: 5
   project_daily_quota_units: 10000  # Example; verify the project's real quota.

@@ -99,6 +99,10 @@ class YouTubeSettings(ServingEntity):
     default_max_comments: Annotated[int, Field(ge=1, le=1000)]
     maximum_comments: Annotated[int, Field(ge=1, le=1000)]
     page_size: Annotated[int, Field(ge=1, le=100)]
+    connect_timeout_seconds: Annotated[int, Field(ge=1, le=10)]
+    read_timeout_seconds: Annotated[int, Field(ge=1, le=10)]
+    http_deadline_seconds: Annotated[int, Field(ge=1, le=30)]
+    maximum_response_bytes: Annotated[int, Field(ge=1024, le=10485760)]
     maximum_http_attempts_per_call: Annotated[int, Field(ge=1, le=3)]
     global_http_attempts_per_second: PositiveInt
     project_daily_quota_units: PositiveInt
@@ -112,6 +116,8 @@ class YouTubeSettings(ServingEntity):
 
     @model_validator(mode="after")
     def validate_sample_and_approval(self):
+        if max(self.connect_timeout_seconds, self.read_timeout_seconds) > self.http_deadline_seconds:
+            raise ValueError("Provider connect/read timeouts must fit within its HTTP deadline")
         if self.default_max_comments > self.maximum_comments:
             raise ValueError("Default comment limit exceeds the maximum")
         required = (1 + math.ceil(self.maximum_comments / self.page_size)) * self.maximum_http_attempts_per_call
@@ -296,6 +302,8 @@ class ServingSettings(ServingEntity):
 
     @model_validator(mode="after")
     def validate_system(self):
+        if self.youtube.http_deadline_seconds > self.worker.heartbeat_seconds:
+            raise ValueError("Provider HTTP deadline must fit between worker heartbeats")
         if self.queue.visibility_timeout_seconds < 6 * self.worker.timeout_seconds + self.queue.event_batch_window_seconds:
             raise ValueError("Queue visibility must be at least six worker timeouts plus its batch window")
         if self.queue.job_deadline_seconds <= self.worker.lease_seconds:

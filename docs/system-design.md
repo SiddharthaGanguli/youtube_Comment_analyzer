@@ -334,7 +334,8 @@ not `PARTIAL`. An interruption after some valid comments can produce `PARTIAL`
 with a reason. A video with zero comments succeeds with an empty result.
 Comments-disabled, missing-video, or nonpublic-video errors fail explicitly.
 
-Use bounded HTTP timeouts and exponential backoff with jitter for network,
+The [YouTube provider implementation](serving-configuration.md#youtube-provider-and-live-readiness)
+uses bounded HTTP timeouts and backoff with jitter for network,
 429, and 5xx errors. Allow at most three HTTP attempts per logical fetch call,
 subject to the shared quota reservation. Invalid credentials and quota errors
 open a global fetch circuit and alert operators. Do not retry permanent 403/404

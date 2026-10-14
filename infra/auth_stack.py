@@ -95,6 +95,7 @@ class AuthStack(Stack):
         for name, metric, service, threshold in (
                 ("DependencyFailures", "DependencyFailureCount", "api", 5),
                 ("QuotaDenied", "QuotaDeniedCount", "jobs", 1),
+                ("ProviderCircuit", "ProviderCircuitOpenedCount", "jobs", 1),
                 ("WorkerFailures", "JobFailedCount", "jobs", 5)):
             cloudwatch.CfnAlarm(self, name, namespace="CommentLens/Serving", metric_name=metric, statistic="Sum",
                 dimensions=[cloudwatch.CfnAlarm.DimensionProperty(name="Environment", value=auth.environment),

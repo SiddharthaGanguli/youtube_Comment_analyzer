@@ -66,6 +66,9 @@ class WorkerCheckpoint(ServingEntity):
     next_page_token: Annotated[str, Field(min_length=1, max_length=2048)] | None = None
     page_tokens: Annotated[tuple[str, ...], Field(max_length=1000)] = ()
     call_attempts: Annotated[int, Field(ge=0, le=3)] = 0
+    retry_not_before: UtcTimestamp | None = None
+    visibility_attempts: Annotated[int, Field(ge=0, le=3)] = 0
+    visibility_lease_token: NonNegativeInt = 0
     fetch_complete: bool = False
     has_more: bool | None = None
     partial_reason: str | None = None

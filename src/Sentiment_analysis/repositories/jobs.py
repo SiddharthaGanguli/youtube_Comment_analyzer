@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import math
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
@@ -13,17 +14,11 @@ from src.Sentiment_analysis.entity.analysis import (
 from src.Sentiment_analysis.entity.jobs import Admission, ObjectPointer, OwnedRequest, WorkRecord
 from src.Sentiment_analysis.repositories.dynamo import Change
 from src.Sentiment_analysis.services.telemetry import Telemetry
+from src.Sentiment_analysis.repositories.errors import JobError
+from src.Sentiment_analysis.repositories.provider_circuit import ProviderCircuit
 
 PACIFIC = ZoneInfo("America/Los_Angeles")
 PURGE_DELAY_SECONDS = 3600
-
-
-class JobError(Exception):
-    """A safe domain error for the later HTTP adapter to translate."""
-
-    def __init__(self, code: str):
-        self.code = code
-        super().__init__(code)
 
 
 def epoch(value: datetime) -> int:
@@ -44,6 +39,7 @@ class JobRepository:
         self.settings = settings
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.telemetry = telemetry or Telemetry(settings.environment, "jobs")
+        self.circuit = ProviderCircuit(store, clock=self.clock, telemetry=self.telemetry)
 
     @staticmethod
     def _version(item):
@@ -64,13 +60,19 @@ class JobRepository:
                             cleanup_at=epoch(request.expires_at) + PURGE_DELAY_SECONDS,
                             owner=digest(request.owner), created_at=epoch(request.created_at))
 
-    def _outbox_change(self, work, now):
+    def _outbox_change(self, work, now, *, not_before=None):
         message = WorkMessage(work_id=work.work_id, release_id=work.model.release_id,
                               dispatch_generation=work.dispatch_generation)
         key = f"OUTBOX#{work.work_id}#{work.dispatch_generation}"
+        # Round future eligibility up so a fractional timestamp cannot release a
+        # retry early. The pending outbox, rather than an SQS delay, holds waits
+        # longer than one Lambda invocation or SQS's 15-minute delay maximum.
+        eligible = math.ceil(not_before.timestamp()) if not_before is not None else None
+        due = eligible if eligible is not None and eligible > epoch(now) else (
+            epoch(now) + self.settings.queue.pending_outbox_retry_after_seconds)
         return Change(key, None, {"message": message.model_dump(mode="json"), "sent": False,
-                                  "created_at": epoch(now), "sent_at": None},
-                      due_family="outbox", due_at=epoch(now) + self.settings.queue.pending_outbox_retry_after_seconds,
+                                  "created_at": epoch(now), "sent_at": None, "not_before": eligible},
+                      due_family="outbox", due_at=min(due, epoch(work.deadline_at)),
                       cleanup_at=epoch(work.expires_at) + PURGE_DELAY_SECONDS)
 
     def _quota_change(self, key, item, data):
@@ -170,6 +172,8 @@ class JobRepository:
                 raise JobError("RATE_LIMITED")
             changes = []
             if new_work:
+                circuit = self.circuit.assert_available()
+                changes.append(self.circuit.condition(circuit))
                 global_item = self.store.get("LIMIT#GLOBAL#ACTIVE")
                 active = global_item.data["count"] if global_item else 0
                 global_rate_key = f"LIMIT#GLOBAL#POST#{minute}"
@@ -285,11 +289,18 @@ class JobRepository:
                     message.release_id != work.model.release_id or
                     message.dispatch_generation != work.dispatch_generation):
                 return None
+            outbox_key = f"OUTBOX#{work.work_id}#{work.dispatch_generation}"
+            outbox = self.store.get(outbox_key)
+            if outbox and outbox.data.get("not_before") is not None and outbox.data["not_before"] > now.timestamp():
+                # A prematurely delivered duplicate must not consume another
+                # lease while the scheduled outbox remains pending.
+                return None
             leased = work.model_copy(update={"state": "FETCHING", "updated_at": now,
                                             "lease_token": work.lease_token + 1,
                                             "lease_until": min(work.deadline_at, now + timedelta(
                                                 seconds=self.settings.worker.lease_seconds))})
-            if self.store.commit([self._work_change(item, leased)]):
+            if self.store.commit([self._work_change(item, leased),
+                                  Change(outbox_key, self._version(outbox), None, check_only=True)]):
                 return leased
         # A transaction conflict alone does not prove another worker claimed it.
         # Raise so the SQS handler retries rather than acknowledging a queued job.
@@ -344,13 +355,14 @@ class JobRepository:
     def spend_attempt(self, work_id, token):
         """Commit one allowance before HTTP. Transport failure cannot refund it."""
         for _ in range(8):
+            circuit = self.circuit.assert_available()
             now = self.clock()
             item, work = self._leased(work_id, token, now)
             day = quota_day(now)
             old_key = "QUOTA#" + work.quota_day
             old_item = self.store.get(old_key)
             old = dict(old_item.data)
-            changes = []
+            changes = [self.circuit.condition(circuit)]
             if day != work.quota_day:
                 new_key = "QUOTA#" + day
                 new_item = self.store.get(new_key)
@@ -461,8 +473,12 @@ class JobRepository:
                 return True
         raise JobError("SYSTEM_BUSY")
 
-    def recover(self, work_id, *, token=None):
-        """Requeue an expired lease, or a live worker's explicit retry, once."""
+    def recover(self, work_id, *, token=None, not_before=None):
+        """Requeue once, durably delaying provider retries without keeping a lease."""
+        if not_before is not None:
+            if not isinstance(not_before, datetime) or not_before.tzinfo is None or not_before.utcoffset() is None:
+                raise ValueError("Retry eligibility requires an aware timestamp")
+            not_before = not_before.astimezone(timezone.utc)
         for _ in range(8):
             item = self.store.get("WORK#" + str(work_id))
             if item is None:
@@ -479,6 +495,8 @@ class JobRepository:
                 return False
             queued = work.model_copy(update={"state": "QUEUED", "lease_until": None, "updated_at": now,
                                              "dispatch_generation": work.dispatch_generation + 1})
-            if self.store.commit([self._work_change(item, queued), self._outbox_change(queued, now)]):
+            eligible = min(max(now, not_before), work.deadline_at) if not_before is not None else None
+            if self.store.commit([self._work_change(item, queued),
+                                  self._outbox_change(queued, now, not_before=eligible)]):
                 return True
         raise JobError("SYSTEM_BUSY")

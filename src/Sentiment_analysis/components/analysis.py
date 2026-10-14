@@ -7,7 +7,7 @@ from src.Sentiment_analysis.entity.analysis import (
     AnalysisResult, Comment, CONFIDENCE_DEFINITION, LABELS, Sampling,
 )
 from src.Sentiment_analysis.entity.worker import CapturedComment, CommentPage, WorkerCheckpoint
-from src.Sentiment_analysis.integrations.fixture_comments import ProviderError
+from src.Sentiment_analysis.integrations.provider import ProviderError
 
 
 def update_checkpoint(checkpoint, **updates):

@@ -2,8 +2,9 @@
 
 The [system design](system-design.md) sets the launch target and its limits.
 This checklist turns that design into small reviewable steps. Steps 1 through 5 are
-implemented and checked with offline fixtures; live fetching and deployment
-remain pending. Finish and verify each step, then commit and push it before
+implemented and checked with offline fixtures. Step 6's adapter and worker
+integration are implemented; approval/quota evidence and its live sample remain
+pending, along with extension connection and deployment. Finish and verify each step, then commit and push it before
 starting the next, following the
 project's existing workflow.
 
@@ -84,8 +85,8 @@ Suggested commit: `feat: process queued analyses with the shared sentiment model
 
 The [worker walkthrough](serving-configuration.md#fixture-worker-and-shared-predictions)
 explains page/batch checkpoints, fenced recovery, bundle verification and test
-commands. The Lambda factory accepts an explicit development fixture only;
-there is no live provider or silent demo fallback. Serving resources remain
+commands. The Lambda factory now accepts an explicit development fixture or
+the approval-gated live provider added in step 6. Serving resources remain
 undeployed. Model integration runs on small trained fixtures in Linux CI.
 
 ## 5. Authentication and quota controls
@@ -110,9 +111,9 @@ sign-in checks belong to the extension/deployment stages.
 ## 6. YouTube integration
 
 - [ ] Verify analytics-use approval and the project's actual daily allocation.
-- [ ] Add the fixed-origin YouTube adapter, public-video metadata check, bounded
+- [x] Add the fixed-origin YouTube adapter, public-video metadata check, bounded
   latest top-level pagination, safe timeouts and classified provider errors.
-- [ ] Resume from checkpoints and enforce retry/reservation limits. No scraping,
+- [x] Resume from checkpoints and enforce retry/reservation limits. No scraping,
   key rotation to evade quota, or hidden reply crawling.
 - [ ] Run a small authorized live sample after fixture checks pass, retaining
   data only under the serving retention policy.
@@ -120,7 +121,10 @@ sign-in checks belong to the extension/deployment stages.
 Suggested commit: `feat: fetch bounded public YouTube comment samples`.
 
 This step's live test is gated on approval; the adapter can be written and tested
-with fixtures while the external approval is pending.
+with fixtures while the external approval is pending. The
+[YouTube walkthrough](serving-configuration.md#youtube-provider-and-live-readiness)
+explains Secrets Manager wiring, durable retry delays, public checks on resume,
+the shared project circuit and the remaining live-test prerequisites.
 
 ## 7. Extension connection
 

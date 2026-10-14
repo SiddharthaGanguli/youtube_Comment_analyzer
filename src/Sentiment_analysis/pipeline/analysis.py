@@ -4,11 +4,12 @@ import logging
 import math
 import random
 import time
+from datetime import timedelta
 
 from src.Sentiment_analysis.components.analysis import AnalysisProcessor, update_checkpoint
 from src.Sentiment_analysis.entity.analysis import Failure, TERMINAL_STATES, Video, WorkMessage
 from src.Sentiment_analysis.entity.worker import WorkerCheckpoint, WorkerIdentity
-from src.Sentiment_analysis.integrations.fixture_comments import ProviderError
+from src.Sentiment_analysis.integrations.provider import ProviderError
 from src.Sentiment_analysis.repositories.jobs import JobError
 from src.Sentiment_analysis.services.telemetry import Telemetry
 
@@ -23,6 +24,9 @@ FAILURES = {
     "PAGE_LIMIT_REACHED": "Comment page limit reached without a usable sample",
     "FETCH_RETRIES_EXHAUSTED": "Comment fetch attempts exhausted",
     "YOUTUBE_QUOTA_EXHAUSTED": "Comment provider allowance is exhausted",
+    "PROVIDER_CREDENTIALS_INVALID": "Comment provider credentials need operator attention",
+    "PROVIDER_ACCESS_DENIED": "Comment provider access was denied",
+    "PROVIDER_UNAVAILABLE": "Comment provider is temporarily unavailable",
     "RESULT_TOO_LARGE": "Analysis exceeds the configured result size limit",
     "INVALID_CHECKPOINT": "Saved analysis progress is invalid",
     "INVALID_PREDICTION": "Model output could not be validated",
@@ -30,7 +34,9 @@ FAILURES = {
 
 
 class AttemptYield(Exception):
-    pass
+    def __init__(self, *, not_before=None):
+        self.not_before = not_before
+        super().__init__("Worker invocation yielded")
 
 
 class AnalysisPipeline:
@@ -41,8 +47,11 @@ class AnalysisPipeline:
             raise ValueError("Worker identity differs from the assigned settings")
         if getattr(provider, "is_fixture", False) and settings.environment != "development":
             raise ValueError("Fixture providers are allowed only in development")
-        if not getattr(provider, "is_fixture", False) and not settings.youtube.live_enabled:
-            raise ValueError("Live comment fetching is disabled")
+        if not getattr(provider, "is_fixture", False):
+            from src.Sentiment_analysis.entity.serving import YouTubeSettings
+            options = YouTubeSettings.model_validate(settings.youtube.model_dump())
+            if not options.live_enabled:
+                raise ValueError("Live comment fetching is disabled")
         self.processor = AnalysisProcessor(settings, predictor)
         self.monotonic, self.sleep = monotonic or time.monotonic, sleep or time.sleep
         self.telemetry = Telemetry(settings.environment, "worker")
@@ -80,6 +89,8 @@ class AnalysisPipeline:
         checkpoint = WorkerCheckpoint.model_validate(raw) if raw is not None else WorkerCheckpoint()
         if (checkpoint.progress != work.progress or checkpoint.fetched > work.input.max_comments or
                 checkpoint.video and checkpoint.video.id != work.input.video_id or
+                checkpoint.visibility_lease_token > work.lease_token or
+                checkpoint.retry_not_before and checkpoint.retry_not_before < work.created_at or
                 checkpoint.fetched_at and not work.created_at <= checkpoint.fetched_at <= self.jobs.clock() or
                 any(r.text is not None and len(r.text) > self.settings.worker.maximum_comment_characters
                     for r in checkpoint.pending)):
@@ -90,10 +101,92 @@ class AnalysisPipeline:
             self.processor.result(partial, work)
         return checkpoint
 
+    def _provider_fault(self, error):
+        if error.circuit_reason:
+            self.jobs.circuit.open(error.circuit_reason)
+
+    def _wait_retry(self, work, checkpoint, started, context):
+        """A saved upstream cooldown also applies after another worker claims the job."""
+        while checkpoint.retry_not_before and checkpoint.retry_not_before > self.jobs.clock():
+            try:
+                self._guard(work, started, context)
+            except AttemptYield:
+                raise AttemptYield(not_before=checkpoint.retry_not_before) from None
+            delay = (checkpoint.retry_not_before - self.jobs.clock()).total_seconds()
+            reserve = self.settings.worker.timeout_seconds - self.settings.worker.soft_deadline_seconds
+            headroom = min(self.settings.worker.soft_deadline_seconds - (self.monotonic() - started),
+                           (work.deadline_at - self.jobs.clock()).total_seconds())
+            if context is not None:
+                headroom = min(headroom, context.get_remaining_time_in_millis() / 1000 - reserve)
+            if delay + self.settings.youtube.http_deadline_seconds >= headroom:
+                raise AttemptYield(not_before=checkpoint.retry_not_before)
+            # Renew ownership while waiting; a long cooldown never silently runs out its lease.
+            work = self.jobs.heartbeat(work.work_id, work.lease_token)
+            self.sleep(min(delay, self.settings.worker.heartbeat_seconds))
+        return work
+
+    def _schedule_retry(self, work, checkpoint, error, started, context):
+        if error.retry_after_seconds is None:
+            self._guard(work, started, context)
+            self.sleep(random.uniform(.1, min(2.0, 2 ** max(checkpoint.call_attempts, checkpoint.visibility_attempts))))
+            return work, checkpoint
+        delay = error.retry_after_seconds
+        checkpoint = update_checkpoint(checkpoint, retry_not_before=self.jobs.clock() + timedelta(seconds=delay))
+        try:
+            work = self._save(work, checkpoint, started, context)
+        except AttemptYield:
+            # The provider can return just after the soft deadline. Retain the
+            # known cooldown in the recovery transaction even if S3 cannot save it.
+            raise AttemptYield(not_before=checkpoint.retry_not_before) from None
+        except JobError as error:
+            if error.code in {"LEASE_LOST", "RESULT_TOO_LARGE"}:
+                raise
+            raise AttemptYield(not_before=checkpoint.retry_not_before) from None
+        except Exception:
+            logger.warning("Analysis worker operation failed")
+            self.telemetry.emit("worker_dependency_error", {"WorkerDependencyFailureCount": 1},
+                                outcome="retry", work_id=work.work_id, attempt=work.lease_token)
+            raise AttemptYield(not_before=checkpoint.retry_not_before) from None
+        return work, checkpoint
+
+    def _recheck_visibility(self, work, checkpoint, started, context):
+        # Fixture metadata is immutable. Saved live data needs a new public check
+        # on every new lease, even when fetching/inference previously completed.
+        if (getattr(self.provider, "is_fixture", False) or checkpoint.video is None or
+                checkpoint.visibility_lease_token == work.lease_token):
+            return work, checkpoint
+        maximum = self.settings.youtube.maximum_http_attempts_per_call
+        while True:
+            if checkpoint.visibility_attempts >= maximum:
+                raise ProviderError("FETCH_RETRIES_EXHAUSTED", retryable=True)
+            work = self._wait_retry(work, checkpoint, started, context)
+            self._guard(work, started, context)
+            work = self.jobs.spend_attempt(work.work_id, work.lease_token)
+            checkpoint = update_checkpoint(checkpoint, visibility_attempts=checkpoint.visibility_attempts + 1)
+            work = self._save(work, checkpoint, started, context)
+            try:
+                self._guard(work, started, context)
+                video = self.provider.video(work.input.video_id)
+                if not isinstance(video, Video) or video.id != work.input.video_id:
+                    raise ProviderError("INVALID_PROVIDER_RESPONSE")
+                checkpoint = update_checkpoint(checkpoint, video=video, visibility_attempts=0,
+                                               visibility_lease_token=work.lease_token, retry_not_before=None)
+                work = self._save(work, checkpoint, started, context)
+                return work, checkpoint
+            except ProviderError as error:
+                self._provider_fault(error)
+                if not error.retryable or checkpoint.visibility_attempts >= maximum:
+                    raise ProviderError("FETCH_RETRIES_EXHAUSTED" if error.retryable else error.code,
+                                        retryable=error.retryable) from None
+                work, checkpoint = self._schedule_retry(work, checkpoint, error, started, context)
+
     def _fetch(self, work, checkpoint, started, context):
         maximum = self.settings.youtube.maximum_http_attempts_per_call
         while not checkpoint.fetch_complete:
-            self._guard(work, started, context)
+            try:
+                self._guard(work, started, context)
+            except AttemptYield:
+                raise AttemptYield(not_before=checkpoint.retry_not_before) from None
             metadata = checkpoint.video is None
             if not metadata and (checkpoint.fetched >= work.input.max_comments or
                     len(checkpoint.page_tokens) >= math.ceil(work.input.max_comments / self.settings.youtube.page_size) or
@@ -104,6 +197,7 @@ class AnalysisPipeline:
             try:
                 if checkpoint.call_attempts >= maximum:
                     raise ProviderError("FETCH_RETRIES_EXHAUSTED", retryable=True)
+                work = self._wait_retry(work, checkpoint, started, context)
                 # Spend first, persist the bounded call counter next, then call the provider.
                 # A crash before the provider can waste an allowance, never an uncounted HTTP attempt.
                 work = self.jobs.spend_attempt(work.work_id, work.lease_token)
@@ -114,20 +208,22 @@ class AnalysisPipeline:
                     video = self.provider.video(work.input.video_id)
                     if not isinstance(video, Video) or video.id != work.input.video_id:
                         raise ProviderError("INVALID_PROVIDER_RESPONSE")
-                    checkpoint = update_checkpoint(checkpoint, video=video, fetched_at=self.jobs.clock(), call_attempts=0)
+                    checkpoint = update_checkpoint(checkpoint, video=video, fetched_at=self.jobs.clock(), call_attempts=0,
+                                                   visibility_lease_token=work.lease_token, retry_not_before=None)
                 else:
                     size = min(self.settings.youtube.page_size, work.input.max_comments - checkpoint.fetched)
                     page = self.provider.comments(work.input.video_id, checkpoint.next_page_token, size)
                     checkpoint = self.processor.accept_page(checkpoint, page, size)
+                    checkpoint = update_checkpoint(checkpoint, retry_not_before=None)
                 work = self._save(work, checkpoint, started, context)
             except ProviderError as error:
+                self._provider_fault(error)
                 if error.retryable and checkpoint.call_attempts < maximum:
-                    self._guard(work, started, context)
-                    self.sleep(random.uniform(.1, min(2.0, 2 ** checkpoint.call_attempts)))
+                    work, checkpoint = self._schedule_retry(work, checkpoint, error, started, context)
                     continue
-                if error.retryable and checkpoint.fetched - checkpoint.duplicates_removed:
+                if (error.retryable or error.code == "YOUTUBE_QUOTA_EXHAUSTED") and checkpoint.fetched - checkpoint.duplicates_removed:
                     checkpoint = self.processor.finish_fetch(checkpoint, work.input.max_comments,
-                                                              partial_reason="FETCH_RETRIES_EXHAUSTED")
+                                                              partial_reason="FETCH_RETRIES_EXHAUSTED" if error.retryable else error.code)
                     work = self._save(work, checkpoint, started, context)
                     break
                 raise ProviderError("FETCH_RETRIES_EXHAUSTED" if error.retryable else error.code,
@@ -147,9 +243,9 @@ class AnalysisPipeline:
         self.jobs.finish(work.work_id, work.lease_token, state="FAILED",
                          failure=Failure(code=code, message=FAILURES[code], retryable=retryable))
 
-    def _recover(self, work):
+    def _recover(self, work, *, not_before=None):
         try:
-            recovered = self.jobs.recover(work.work_id, token=work.lease_token)
+            recovered = self.jobs.recover(work.work_id, token=work.lease_token, not_before=not_before)
             current = self.jobs.get_work(work.work_id)
             return recovered or bool(current and current.state in TERMINAL_STATES)
         except Exception:
@@ -170,6 +266,7 @@ class AnalysisPipeline:
         started = self.monotonic()
         self.telemetry.emit("worker_delivery", {"WorkerDeliveryCount": 1}, outcome="accepted", work_id=work.work_id,
                             attempt=work.lease_token, release_id=work.model.release_id)
+        checkpoint = None
         try:
             if work.model != self.identity.model:
                 self._fail(work, "RELEASE_MISMATCH")
@@ -182,6 +279,7 @@ class AnalysisPipeline:
             except (ValueError, TypeError, KeyError):
                 self._fail(work, "INVALID_CHECKPOINT")
                 return True
+            work, checkpoint = self._recheck_visibility(work, checkpoint, started, context)
             work, checkpoint = self._fetch(work, checkpoint, started, context)
             if checkpoint.partial_reason and not checkpoint.fetched - checkpoint.duplicates_removed:
                 self._fail(work, checkpoint.partial_reason)
@@ -218,21 +316,24 @@ class AnalysisPipeline:
             if error.code == "YOUTUBE_QUOTA_EXHAUSTED":
                 self._fail(work, error.code, retryable=True)
                 return True
+            if error.code == "DEPENDENCY_UNAVAILABLE":
+                self._fail(work, "PROVIDER_CREDENTIALS_INVALID")
+                return True
             if error.code == "LEASE_LOST":
                 self.jobs.expire(work.work_id)
                 return True  # Current lease/reconciler owns any remaining recovery.
             if error.code in {"RATE_LIMITED", "SYSTEM_BUSY"}:
-                return self._recover(work)
+                return self._recover(work, not_before=checkpoint.retry_not_before if checkpoint else None)
             raise
-        except AttemptYield:
-            return self._recover(work)
+        except AttemptYield as yielded:
+            return self._recover(work, not_before=yielded.not_before)
         except Exception:
             logger.warning("Analysis worker operation failed")
             self.telemetry.emit("worker_dependency_error", {"WorkerDependencyFailureCount": 1},
                                 outcome="retry", work_id=work.work_id, attempt=work.lease_token)
             # Only this invocation's token can request recovery. Never read and
             # recover a newer worker's token after losing ownership.
-            return self._recover(work)
+            return self._recover(work, not_before=checkpoint.retry_not_before if checkpoint else None)
 
     def handle_sqs(self, event, context=None):
         records = event.get("Records") if isinstance(event, dict) else None

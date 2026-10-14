@@ -12,7 +12,8 @@ COUNT_METRICS = frozenset({"RequestCount", "RequestErrorCount", "AuthDeniedCount
     "QuotaReservedUnits", "YouTubeAttemptUnits", "QuotaDeniedCount", "JobSucceededCount", "JobPartialCount", "JobFailedCount",
     "AnalyzedCommentCount", "SkippedCommentCount", "WorkerDeliveryCount", "DuplicateDeliveryCount", "MisroutedRecordCount",
     "WorkerDependencyFailureCount", "MaintenanceErrorCount", "MaintenanceRecoveredCount",
-    "MaintenanceDispatchedCount", "MaintenanceCleanedCount", "DispatchCount", "DispatchFailureCount"})
+    "MaintenanceDispatchedCount", "MaintenanceCleanedCount", "DispatchCount", "DispatchFailureCount",
+    "ProviderCircuitOpenedCount", "ProviderCircuitBlockedCount"})
 TIME_METRICS = frozenset({"RequestLatencyMillis", "JobDurationMillis"})
 
 

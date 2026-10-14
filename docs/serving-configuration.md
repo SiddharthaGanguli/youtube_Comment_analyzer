@@ -600,8 +600,8 @@ protocol tests use synthetic predictions. These checks establish worker behavior
 and shared-model integration, not production capacity or live YouTube accuracy.
 
 The next section implements auth infrastructure and operational metrics. The
-live provider, connected extension sign-in and measured 1,000-user AWS deployment
-remain later steps in the backend plan.
+live provider implementation is covered below. Connected extension sign-in and
+measured 1,000-user AWS deployment remain later steps in the backend plan.
 
 ## Authentication, quota controls and monitoring
 
@@ -713,7 +713,7 @@ denials that reach the app.
 Gateway access logs include request ID, matched route, status, response bytes
 and integration latency; they exclude IP, headers, claims and raw error text.
 The auth stack retains those logs for 14 days and defines alarms for gateway
-5xx errors, API dependencies, quota denials and failed jobs. Alarm notification
+5xx errors, API dependencies, quota denials, provider circuit openings and failed jobs. Alarm notification
 destinations and the worker/queue/Lambda operational alarms are deployment work.
 Existing generic warning messages still omit exception text.
 
@@ -756,4 +756,162 @@ Before deployment, supply the stable extension ID and existing API function,
 copy real public outputs into serving/extension settings, audit invocation
 permissions, configure log/notification delivery and verify sign-in with a real
 Cognito user. Verify email-delivery/service quotas for the launch target as part
-of deployment. Live YouTube analysis stays disabled while step 6 remains pending.
+of deployment. Live YouTube analysis stays disabled until its approval/quota
+references and deployment prerequisites are recorded.
+
+## YouTube provider and live readiness
+
+The worker can now use YouTube Data API v3. This changes the source of comments;
+the shared predictor, result contract, owned requests and private storage still
+follow the same path as the fixture worker.
+
+Start with `youtube` in [serving.yaml](../config/serving.yaml). It sets public
+visibility, latest-first top-level comments, plain text and a maximum of 1,000
+received comments. HTTP connect/read timeouts are 3/5 seconds, the request/body
+deadline is 12 seconds and one response is capped at 2 MiB. The typed settings
+require these timeouts to fit the deadline, and the deadline to fit between
+worker heartbeats. These are initial bounds to measure during deployment.
+
+### Configuration and the API key
+
+[config/youtube.py](../src/Sentiment_analysis/config/youtube.py) revalidates typed
+settings before creating live clients. `live_enabled` requires recorded
+analytics-use approval, a nonblank approval reference, a regional Secrets
+Manager ARN and verified project quota. A copied settings object cannot skip
+those checks. The checked-in values stay disabled and unset.
+
+Record the approval reference, actual quota and secret ARN before enabling
+live fetching. These details have not yet been supplied, so the configuration
+is not enabled.
+To collect these details:
+
+1. Record the case/reference from the YouTube analytics-use approval email.
+   The [derived-metrics policy](https://developers.google.com/youtube/terms/derived-metrics-policy)
+   covers aggregate comment sentiment under the accepted analytics amendment.
+2. Select the matching Google Cloud project, then **APIs & Services → YouTube
+   Data API v3 → Quotas & System Limits**. Record the project ID, actual daily
+   allocation and verification date. A key alone does not establish analytics
+   approval or the project's allocation.
+3. In AWS Secrets Manager, select `us-east-1`, choose **Other type of secret**,
+   and store one key/value pair named `api_key`. For example, name the secret
+   `comment-lens/youtube-api-key`. Copy its ARN from the details page. Follow
+   [AWS's secret creation instructions](https://docs.aws.amazon.com/secretsmanager/latest/userguide/create_secret.html).
+   Send the ARN, never the key value.
+
+The secret loader accepts a plain API key or exactly `{"api_key": "..."}`. It
+rejects binary secrets, duplicate/extra JSON fields, invalid keys and values
+over 4 KiB. Errors use fixed messages without secret contents. Boto3 uses the
+default AWS execution role/profile; runtime code reads no DVC credentials or
+environment variable containing a YouTube key. Deployment grants the worker
+`secretsmanager:GetSecretValue` on that one ARN and, for a customer-managed key,
+the required scoped KMS decrypt permission.
+
+[worker_runtime.py](../src/Sentiment_analysis/config/worker_runtime.py) selects
+an explicit `SERVING_FIXTURE_PATH` only in development. Otherwise it requires
+the live settings, reads the secret and builds the live provider. It never
+silently switches to demo data. The cached factory reuses the key/provider and
+one verified prediction service per warm worker. Importing the Lambda entry
+point loads no model or AWS clients.
+
+### What the adapter requests
+
+[integrations/youtube.py](../src/Sentiment_analysis/integrations/youtube.py)
+uses verified TLS to the fixed `www.googleapis.com` origin. It requests only
+`/youtube/v3/videos` and `/youtube/v3/commentThreads`, using a validated video
+ID and opaque page token rather than a user-provided URL. There are no redirects,
+ambient proxies or transport retries. The API key is sent in the
+[`X-Goog-Api-Key` header](https://docs.cloud.google.com/apis/docs/system-parameters),
+outside the URL. Transport diagnostics and raw error bodies never enter logs.
+
+The metadata response must match the requested ID and have
+`status.privacyStatus=public`. Private/unlisted videos fail explicitly; a
+missing video gives `VIDEO_NOT_FOUND`. Comment requests use `order=time`,
+`textFormat=plainText` and at most 100 threads per page. The adapter reads
+`topLevelComment.snippet.textDisplay`; `textOriginal` is not reliably available
+to non-authors. Replies are excluded. Duplicate IDs are preserved until the
+worker counts/removes them, and the worker retains its existing sample/page
+ceilings rather than fetching extra pages to replace duplicates. See the
+[comment resource](https://developers.google.com/youtube/v3/docs/comments) and
+[commentThreads.list](https://developers.google.com/youtube/v3/docs/commentThreads/list).
+
+Malformed identities, dates, counts, tokens, JSON, unexpected replies, oversized
+bodies and invalid response shapes fail with safe fixed codes. Empty valid
+pages remain valid input and can produce an empty result. Network errors,
+429 and 5xx responses are retryable; disabled comments, missing/nonpublic
+videos and invalid response bodies have explicit terminal outcomes.
+
+Socket timeouts and a monotonic deadline bound connection/request/body reads.
+The standard-library DNS resolver has no interruptible timeout here; a stuck
+OS DNS lookup is bounded by the outer Lambda timeout and fenced recovery,
+not a guaranteed 12-second total wall-clock return. Measure DNS/network behavior
+in the deployed environment before setting production targets.
+
+### Retries, visibility and the shared circuit
+
+The pipeline spends an allowance and saves the logical call counter before each
+HTTP attempt, including visibility checks. Each metadata/page call has at most
+three attempts across recovery. Transport failure never refunds a spent unit.
+The initial maximum-size reservation is 33 units; a resumed worker may need an
+extra visibility call, which must fit the same authoritative daily budget.
+[YouTube's quota table](https://developers.google.com/youtube/v3/determine_quota_cost)
+lists a one-unit cost for these methods and charges invalid attempts too.
+
+Short retries use bounded jitter. A valid `Retry-After` is retained, including
+delays longer than 60 seconds, and saved as `retry_not_before`. A worker waits
+only if the delay and the next HTTP call fit its invocation and job deadline;
+otherwise it releases its lease into a delayed outbox generation. The stream
+dispatcher leaves that record pending until its timestamp, and the scheduled
+reconciler eventually sends it. Premature queue duplicates cannot claim a new
+lease. A delay beyond the overall deadline ends with deadline expiry, without
+another provider call. Retry delays are capped at 24 hours, longer than every
+permitted job lifetime. Hard crashes can cause conservative extra allowance
+spending, while durable counters still bound actual retries.
+
+On every new live lease with saved metadata, the worker spends an allowance to
+check the video again before using saved comments or predictions. This also
+applies when fetching was complete. A video that became private or unavailable
+fails without publishing a result. Visibility retries have a separate durable
+counter, so they do not reset an interrupted page's attempts. A successful
+recheck preserves the original sample fetch timestamp. Private checkpoints
+remain under the existing 24-hour serving cleanup policy.
+
+[provider_circuit.py](../src/Sentiment_analysis/repositories/provider_circuit.py)
+stores one `CIRCUIT#YOUTUBE` item in the serving table. Verified Google quota
+faults block new work and future provider attempts until Pacific midnight;
+credential/service-configuration faults block until operator repair. Admission
+and spending pin the circuit version in their DynamoDB transaction, so an
+opening between the read and commit cannot create new work or spend unnoticed.
+Existing cache hits, joins, idempotent replays and owned reads remain available.
+Requests already in flight cannot be cancelled by the circuit.
+
+A quota fault after a usable, publicly checked sample can publish a clearly
+marked partial result. Credential faults fail explicitly. A failed visibility
+recheck never publishes a partial result using unverified saved data. Circuit
+opens/blocks emit allowlisted metrics; the auth infrastructure adds a
+`ProviderCircuitOpenedCount` alarm. Notification routing remains deployment work.
+
+Quota opens expire through the strongly read timestamp, independent of TTL.
+Credential repair requires fixing the restricted key/service configuration,
+recycling warm workers so they load the repaired secret, and then an operator
+calling `close_after_credentials_repaired(expected_version=...)` with the
+freshly read circuit version. There is no public reset route and no quota-reset
+method; the action does not alter daily spent/reserved counters.
+
+### Checks and the remaining live sample
+
+All provider/runtime/circuit/worker tests use synthetic responses or in-process
+AWS fixtures. Run them alongside the existing serving checks:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests/serving -t . -v
+.\.venv\Scripts\python.exe -m unittest tests.infra.test_auth_stack -v
+```
+
+The adapter and worker wiring are implemented. The small live verification
+has not run: approval/quota evidence, the secret ARN, role access, assigned
+serving table and immutable worker release must be ready first. No serving
+AWS resources were created in this stage. Use the normal admitted job → outbox
+→ worker path for that live sample so spending, ownership and retention are
+tested together. Check metadata visibility, comment ordering, pagination,
+actual attempt units, result counts, safe faults and eventual cleanup. The
+extension remains a demo until step 7 connects it.

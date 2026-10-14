@@ -97,4 +97,10 @@ class AuthStackTests(unittest.TestCase):
         self.assertNotIn("*", json.dumps(cors))
         for alarm in self.resources_of("AWS::CloudWatch::Alarm"):
             self.assertEqual(alarm["Properties"]["TreatMissingData"], "notBreaching")
-        self.assertEqual(len(self.resources_of("AWS::CloudWatch::Alarm")), 4)
+        alarms = self.resources_of("AWS::CloudWatch::Alarm")
+        self.assertEqual(len(alarms), 5)
+        circuit = next(a["Properties"] for a in alarms
+                       if a["Properties"].get("MetricName") == "ProviderCircuitOpenedCount")
+        self.assertEqual(circuit["Threshold"], 1)
+        self.assertEqual(circuit["Dimensions"], [{"Name": "Environment", "Value": "development"},
+                                               {"Name": "Service", "Value": "jobs"}])

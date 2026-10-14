@@ -27,6 +27,10 @@ class Dispatcher:
                                            cleanup_at=epoch(work.expires_at) + PURGE_DELAY_SECONDS if work else
                                            epoch(self.jobs.clock()) + PURGE_DELAY_SECONDS)])
             return False
+        if item.data.get("not_before") is not None and item.data["not_before"] > self.jobs.clock().timestamp():
+            # A stream record arrives immediately; a scheduled retry stays
+            # pending in the due index until the reconciler reaches its time.
+            return False
         # If marking sent fails, leave it pending. Recovery sends the same message again.
         self.sqs.send_message(QueueUrl=self.queue_for_release(message.release_id),
                               MessageBody=message.model_dump_json())

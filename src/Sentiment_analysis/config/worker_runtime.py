@@ -6,6 +6,7 @@ from functools import lru_cache
 
 from src.Sentiment_analysis.config.serving import ServingConfigurationManager
 from src.Sentiment_analysis.config.worker import WorkerConfigurationManager
+from src.Sentiment_analysis.config.youtube import load_youtube_api_key, validate_live_youtube
 
 
 def build_worker_pipeline(settings, jobs, objects, provider, *, image_code_revision):
@@ -19,21 +20,29 @@ def build_worker_pipeline(settings, jobs, objects, provider, *, image_code_revis
 @lru_cache(maxsize=1)
 def worker_runtime():
     settings = ServingConfigurationManager(os.environ.get("SERVING_CONFIG_PATH")).get_serving_config()
-    # A live adapter is a later stage. No silent demo fallback in deployment.
     fixture_path = os.environ.get("SERVING_FIXTURE_PATH")
-    if not fixture_path or settings.environment != "development":
-        raise ValueError("Step 4 requires an explicit development fixture provider")
-    if settings.storage.table_name is None:
+    if not settings.storage.table_name:
         raise ValueError("Deployment must assign storage.table_name")
-    from src.Sentiment_analysis.integrations.fixture_comments import FixtureCommentProvider
+    if fixture_path:
+        if settings.environment != "development":
+            raise ValueError("Fixture providers are allowed only in development")
+        from src.Sentiment_analysis.integrations.fixture_comments import FixtureCommentProvider
+        provider = FixtureCommentProvider.from_file(settings, fixture_path)
+    else:
+        # Reject missing approval/configuration before constructing any AWS
+        # clients; this also catches unvalidated model_copy changes.
+        validate_live_youtube(settings)
     from src.Sentiment_analysis.integrations.objects import ObjectStore
     from src.Sentiment_analysis.repositories.dynamo import DynamoStore
     from src.Sentiment_analysis.repositories.jobs import JobRepository
     import boto3
     from botocore.config import Config
-    provider = FixtureCommentProvider.from_file(settings, fixture_path)
     sdk = Config(connect_timeout=2, read_timeout=5, retries={"mode": "standard", "total_max_attempts": 3})
     session = boto3.Session(region_name=settings.region)
+    if not fixture_path:
+        from src.Sentiment_analysis.integrations.youtube import YouTubeCommentProvider
+        api_key = load_youtube_api_key(settings, session.client("secretsmanager", config=sdk))
+        provider = YouTubeCommentProvider(settings, api_key)
     clock = lambda: datetime.now(timezone.utc)
     jobs = JobRepository(DynamoStore(session.client("dynamodb", config=sdk), settings.storage.table_name), settings, clock=clock)
     objects = ObjectStore(session.client("s3", config=sdk.merge(Config(signature_version="s3v4"))), settings, clock=clock)

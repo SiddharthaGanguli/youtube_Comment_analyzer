@@ -5,12 +5,7 @@ from pathlib import Path
 
 from src.Sentiment_analysis.entity.analysis import Video
 from src.Sentiment_analysis.entity.worker import CommentPage
-
-
-class ProviderError(Exception):
-    def __init__(self, code, *, retryable=False):
-        self.code, self.retryable = code, retryable
-        super().__init__(code)
+from src.Sentiment_analysis.integrations.provider import ProviderError
 
 
 class FixtureCommentProvider:

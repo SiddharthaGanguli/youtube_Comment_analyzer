@@ -24,11 +24,15 @@ No serving resources are deployed. Run
 `python -m src.Sentiment_analysis.config.serving` from the project environment
 to check `config/serving.yaml`. The worker resumes page/batch checkpoints, uses
 the shared predictor with one native thread, and publishes validated private
-results under the current lease. It currently accepts explicit development
-fixtures. The auth template defines Cognito, scoped gateway routes, throttles
+results under the current lease. Step 6 adds a fixed-origin YouTube provider,
+Secrets Manager key loading, durable retry delays, public checks on resume and
+a shared quota/credential circuit. It accepts explicit development fixtures or
+the approval-gated live provider. The auth template defines Cognito, scoped gateway routes, throttles
 and alarms; an S256 PKCE helper and allowlisted serving metrics are tested too.
-Cognito deployment, live YouTube fetching and extension connection remain later
-steps. See the [auth/monitoring walkthrough](docs/serving-configuration.md#authentication-quota-controls-and-monitoring).
+Cognito deployment, authorized live verification and extension connection remain
+pending. Live fetching is disabled in the checked-in settings. See the
+[YouTube walkthrough](docs/serving-configuration.md#youtube-provider-and-live-readiness)
+and [auth/monitoring walkthrough](docs/serving-configuration.md#authentication-quota-controls-and-monitoring).
 
 To inspect the API locally without connecting to AWS:
 
@@ -143,8 +147,9 @@ review flags, skipped inputs, and coverage. Try it with:
 
 The JSON result is saved under `artifacts/model_prediction/`. See
 [prediction usage and the response contract](docs/prediction.md). The extension
-remains a design preview; live YouTube retrieval, connecting the extension to
-the HTTP backend, and AWS deployment are still to be built.
+remains a design preview; the YouTube provider is implemented, while authorized
+live verification, connecting the extension to the HTTP backend, and AWS
+deployment remain pending.
 
 ## MLflow experiments and stage artifacts
 
