@@ -801,7 +801,9 @@ workstation; recheck the project's allocation before production deployment.
 Record the approval reference before enabling live fetching. To collect or
 update these details:
 
-1. Record the case/reference from the YouTube analytics-use approval email.
+1. Record the reference to YouTube's accepted analytics-use decision for this
+   project and application. It may be a case ID, an official decision link, or
+   the date/subject of approval correspondence with a private evidence reference.
    The [derived-metrics policy](https://developers.google.com/youtube/terms/derived-metrics-policy)
    covers aggregate comment sentiment under the accepted analytics amendment.
 2. Select the matching Google Cloud project, then **APIs & Services → YouTube
@@ -828,6 +830,49 @@ the live settings, reads the secret and builds the live provider. It never
 silently switches to demo data. The cached factory reuses the key/provider and
 one verified prediction service per warm worker. Importing the Lambda entry
 point loads no model or AWS clients.
+
+### Record analytics approval
+
+If approval has already been granted, record the decision reference in
+`youtube.approval_reference` and verify that it covers this project's comment
+sentiment use case. There is no mandatory case-ID format in the published
+process. An email date/subject plus a private evidence reference is useful when
+the decision has no case number. Record accepted-use evidence rather than an
+application receipt, API-enabled status or credentials page.
+
+For an application that still needs approval, open the
+[YouTube API audit form](https://support.google.com/youtube/contact/yt_api_form?hl=en).
+Find Section 5 and select **Analytics & Reporting**. Review the derived-metrics
+amendment and provide the requested application evidence. YouTube determines
+whether the use case qualifies; selecting its acknowledgement does not itself
+grant approval. This flow is described in the
+[derived-metrics policy](https://developers.google.com/youtube/terms/derived-metrics-policy).
+
+The form asks for the numeric Google Cloud **project number**, available beside
+the project ID on the Cloud dashboard. It also asks for a public HTTPS privacy
+policy and dashboard evidence. The project ID recorded here is
+`applied-polymer-511605-m3`; its numeric project number and a published privacy
+policy URL have not yet been supplied. Use actual values and label preview
+screenshots as demo data.
+
+This draft describes the current implementation and proposed live behavior:
+
+> Comment Lens is a Chrome extension in development, with a popup and a full
+> dashboard. Its proposed live backend retrieves public video metadata and up
+> to 1,000 latest top-level comments through videos.list and commentThreads.list.
+> A TF-IDF and logistic-regression model estimates Positive, Neutral and Negative
+> sentiment from the sampled text. The dashboard presents aggregate estimates,
+> coverage and model confidence separately from YouTube-provided statistics.
+> The current preview uses handwritten demo comments; the live service is not
+> deployed. The design uses Cognito for our application's login and an API key
+> for public YouTube reads. It does not request private YouTube data or infer
+> protected attributes. Serving checkpoints and results use private S3 storage
+> with a 24-hour retention policy. Users can remove their owned request
+> references; shared cached analyses expire under that retention policy.
+
+Review the draft against the application's actual state when preparing the
+submission. Keep `analytics_use_approved` and `live_enabled` false until the
+accepted decision is recorded and the remaining serving prerequisites are ready.
 
 ### What the adapter requests
 
