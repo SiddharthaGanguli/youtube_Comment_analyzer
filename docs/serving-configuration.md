@@ -778,12 +778,13 @@ worker heartbeats. These are initial bounds to measure during deployment.
 settings before creating live clients. `live_enabled` requires recorded
 analytics-use approval, a nonblank approval reference, a regional Secrets
 Manager ARN and verified project quota. A copied settings object cannot skip
-those checks. The checked-in values stay disabled and unset.
+those checks. The checked-in secret ARN points to the project's `us-east-1`
+secret; live fetching stays disabled and approval/quota verification stays unset.
 
-Record the approval reference, actual quota and secret ARN before enabling
-live fetching. These details have not yet been supplied, so the configuration
-is not enabled.
-To collect these details:
+The secret ARN is recorded in serving YAML. Its contents and worker-role access
+have not been verified from this workstation, which has no configured AWS role
+or profile. Record the approval reference and actual project quota before enabling
+live fetching. To collect or update these details:
 
 1. Record the case/reference from the YouTube analytics-use approval email.
    The [derived-metrics policy](https://developers.google.com/youtube/terms/derived-metrics-policy)
@@ -908,7 +909,8 @@ AWS fixtures. Run them alongside the existing serving checks:
 ```
 
 The adapter and worker wiring are implemented. The small live verification
-has not run: approval/quota evidence, the secret ARN, role access, assigned
+has not run: approval/quota evidence, verification of the configured secret and
+worker-role access, assigned
 serving table and immutable worker release must be ready first. No serving
 AWS resources were created in this stage. Use the normal admitted job → outbox
 → worker path for that live sample so spending, ownership and retention are

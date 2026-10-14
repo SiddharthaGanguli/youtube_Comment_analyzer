@@ -19,7 +19,7 @@ youtube:
   live_enabled: false
   analytics_use_approved: false
   approval_reference: null
-  api_key_secret_arn: null  # Secrets Manager reference, never an API key here.
+  api_key_secret_arn: arn:aws:secretsmanager:us-east-1:895812756022:secret:comment-lens/youtube-api-key-1P4SMe  # Secret reference only.
   project_quota_verified: false
   visibility: public
   order: time

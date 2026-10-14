@@ -20,7 +20,7 @@ youtube:
   live_enabled: false
   analytics_use_approved: false
   approval_reference: null
-  api_key_secret_arn: null
+  api_key_secret_arn: arn:aws:secretsmanager:us-east-1:895812756022:secret:comment-lens/youtube-api-key-1P4SMe
   project_quota_verified: false
   visibility: public
   order: time
