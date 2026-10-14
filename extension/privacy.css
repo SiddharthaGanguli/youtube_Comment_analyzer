@@ -27,6 +27,7 @@ a:focus-visible { outline: 3px solid #9281ea; outline-offset: 4px; }
   gap: 20px;
 }
 .brand { color: var(--ink); font-size: 20px; font-weight: 750; text-decoration: none; }
+.policy-navigation { display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; font-size: 14px; }
 main { max-width: 900px; margin: 0 auto; padding: 0 24px; }
 article { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 44px 50px; }
 h1 { font-size: 38px; line-height: 1.2; letter-spacing: -.035em; margin: 0 0 10px; }

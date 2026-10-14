@@ -54,8 +54,28 @@ Open `http://127.0.0.1:8765/privacy.html` to review the page locally.
 The PDF is prepared for the audit form's first evidence box. The policy page is
 not publicly hosted yet; it still needs a real HTTPS URL for the form. Hosting
 provider details and live consent/account controls must be finalized before the
-relevant features are launched. Homepage branding evidence and terms
-documentation are separate tasks.
+relevant features are launched. Homepage branding evidence remains a separate
+task.
+
+## Terms of Service
+
+The popup, dashboard and privacy page link to `terms.html`. It identifies the
+independent developer, includes the YouTube terms agreement, and explains demo
+status, model limitations, responsible use, content rights, exports, live
+limits, expiration and deletion. It uses the privacy page's local stylesheet.
+
+Upload `../output/pdf/comment-lens-terms-of-service.pdf` in the audit form's
+**Terms of Service Documentation** box. Edit the HTML and rebuild it with:
+
+    uv run scripts/export_terms_of_service.py
+
+Run from the repository root. This uses the same document renderer as the
+privacy export. Both exports preserve active external YouTube/Google/contact
+links. Relative links to app pages are readable references in the PDF until
+real public HTTPS destinations are supplied.
+
+Review locally at `http://127.0.0.1:8765/terms.html`. Terms and privacy pages
+still need public hosting; these PDF files are evidence documents, not URLs.
 
 ## Where to make changes
 
@@ -65,6 +85,7 @@ documentation are separate tasks.
 | `popup.html`, `popup.mjs` | Current-video detection and dashboard launch |
 | `dashboard.html`, `dashboard.mjs` | Dashboard sections and interactions |
 | `styles.css` | Shared layout, colors, typography, and responsive rules |
+| `privacy.html`, `terms.html`, `privacy.css` | Legal pages and their shared layout |
 | `demo-data.mjs` | Handwritten comment sample and current baseline metrics |
 | `lib.mjs` | URL parsing, filtering, summary counts, and CSV formatting |
 

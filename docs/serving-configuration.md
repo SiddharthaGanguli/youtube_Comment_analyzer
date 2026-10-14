@@ -873,17 +873,22 @@ displayed units/range to expected API use; the 1,000-user target is not an API
 request estimate. A configured ceiling is also not a measured daily forecast.
 
 The privacy policy is prepared as [an HTML page](../extension/privacy.html) and
-[an upload PDF](../output/pdf/comment-lens-privacy-policy.pdf). The developer
-confirmed `siddharthaganguli0093@gmail.com` as the public privacy contact.
-Popup and dashboard footers now link to the page. It explains current preview
+[an upload PDF](../output/pdf/comment-lens-privacy-policy.pdf). The Terms of
+Service are prepared as [an HTML page](../extension/terms.html) and
+[an upload PDF](../output/pdf/comment-lens-terms-of-service.pdf). The developer
+confirmed `siddharthaganguli0093@gmail.com` as the public contact.
+Popup and dashboard footers link to both pages. The privacy policy explains current preview
 behavior separately from the undeployed live service, including public comment
 data, cloud processing, shared caches, expiration and email deletion requests.
-The PDF is for the first evidence upload, not a public privacy-policy URL.
+The privacy PDF is for the first evidence upload; the terms PDF is for
+**Terms of Service Documentation**, the third upload. Neither is a public URL.
+The terms include the YouTube Terms of Service agreement and explain model
+limitations, responsible use, content rights and result expiration.
 Hosting provider/log details and live privacy consent/account controls need
 finalization before launch.
 
 The form still needs a public HTTPS policy URL, a homepage screenshot showing
-its policy link and YouTube attribution, terms documentation and a fresh
+its policy link and YouTube attribution, and a fresh
 dashboard screenshot with its demo label and browser address bar. These pages
 have not been published. Supply real review URLs and label preview data
 accurately.

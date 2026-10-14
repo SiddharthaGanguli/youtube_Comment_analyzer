@@ -51,7 +51,7 @@
 
         <h2>6. Retention in the planned live service</h2>
         <ul>
-          <li><strong>Analysis results and fetched comments:</strong> access expires after 24 hours. Scheduled cleanup then removes stored objects, including old object versions. A seven-day storage cleanup backstop is planned for missed or orphaned objects; physical deletion is separate from access expiry.</li>
+          <li><strong>Analysis results and fetched comments:</strong> access lasts up to 24 hours from the original analysis creation. Cached results keep their original expiry and may expire sooner. Scheduled cleanup then removes stored objects, including old object versions. A seven-day storage cleanup backstop is planned for missed or orphaned objects; physical deletion is separate from access expiry.</li>
           <li><strong>Request records:</strong> expired metadata is scheduled for removal after an additional one-hour cleanup window. Usage-accounting records have a separate short cleanup cycle.</li>
           <li><strong>Application logs:</strong> the planned retention is 14 days. Allowed diagnostic fields include request IDs, timing, counts, and error codes; comment text, author names, emails, tokens, and credentials are excluded.</li>
           <li><strong>Account information:</strong> it is retained until account closure and the related deletion are completed. Analysis expiry and signing out do not delete an account.</li>
@@ -80,6 +80,6 @@
       </section>
     </article>
   </main>
-  <footer class="policy-footer">Comment Lens | Development preview | <a href="dashboard.html">Return to demo</a></footer>
+  <footer class="policy-footer">Comment Lens | Development preview | <a href="terms.html">Terms of Service</a> | <a href="dashboard.html">Return to demo</a></footer>
 </body>
 </html>
