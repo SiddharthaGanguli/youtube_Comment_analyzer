@@ -783,8 +783,15 @@ secret; live fetching stays disabled and approval/quota verification stays unset
 
 The secret ARN is recorded in serving YAML. Its contents and worker-role access
 have not been verified from this workstation, which has no configured AWS role
-or profile. Record the approval reference and actual project quota before enabling
-live fetching. To collect or update these details:
+or profile.
+
+`youtube.project_id` records `applied-polymer-511605-m3` as the Google Cloud
+project supplied for this setup. This metadata does not verify the key's project
+association, the daily allocation or analytics-use approval. A green status icon
+on a console page does not provide the numeric quota or an approval reference.
+
+Record the approval reference and actual project quota before enabling live
+fetching. To collect or update these details:
 
 1. Record the case/reference from the YouTube analytics-use approval email.
    The [derived-metrics policy](https://developers.google.com/youtube/terms/derived-metrics-policy)

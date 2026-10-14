@@ -85,6 +85,8 @@ class ModelServingSettings(ServingEntity):
 
 
 class YouTubeSettings(ServingEntity):
+    # Project provenance; the API key's actual project association is verified separately.
+    project_id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")] | None = None
     live_enabled: bool
     analytics_use_approved: bool
     approval_reference: NonEmptyText | None
