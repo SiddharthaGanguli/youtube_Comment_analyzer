@@ -1,0 +1,10 @@
+# Auth infrastructure can be synthesized before serving resources exist.
+# Real extension ID and API Lambda name are required CloudFormation parameters.
+environment: development
+region: us-east-1
+cognito_domain_prefix: comment-lens-development
+access_token_minutes: 15
+refresh_token_days: 7
+callback_path: cognito
+logout_path: logout
+self_signup_enabled: true

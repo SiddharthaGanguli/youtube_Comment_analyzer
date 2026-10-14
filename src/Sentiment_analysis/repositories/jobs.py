@@ -12,6 +12,7 @@ from src.Sentiment_analysis.entity.analysis import (
 )
 from src.Sentiment_analysis.entity.jobs import Admission, ObjectPointer, OwnedRequest, WorkRecord
 from src.Sentiment_analysis.repositories.dynamo import Change
+from src.Sentiment_analysis.services.telemetry import Telemetry
 
 PACIFIC = ZoneInfo("America/Los_Angeles")
 PURGE_DELAY_SECONDS = 3600
@@ -38,10 +39,11 @@ def quota_day(now: datetime) -> str:
 
 
 class JobRepository:
-    def __init__(self, store, settings, *, clock=None):
+    def __init__(self, store, settings, *, clock=None, telemetry=None):
         self.store = store
         self.settings = settings
         self.clock = clock or (lambda: datetime.now(timezone.utc))
+        self.telemetry = telemetry or Telemetry(settings.environment, "jobs")
 
     @staticmethod
     def _version(item):
@@ -143,6 +145,7 @@ class JobRepository:
                 if idem.data["body_hash"] != body_hash:
                     raise JobError("IDEMPOTENCY_CONFLICT")
                 request, work = self.owned(owner, idem.data["analysis_id"])
+                self.telemetry.emit("admission", {"SubmissionCount": 1, "ReplayCount": 1}, outcome="replay", work_id=work.work_id)
                 return Admission(request=request, work=work, replay=True)
             cache_item = self.store.get("CACHE#" + cache_key)
             work_item = self.store.get("WORK#" + cache_item.data["work_id"]) if cache_item else None
@@ -183,6 +186,7 @@ class JobRepository:
                 reserve = (1 + (input.max_comments + self.settings.youtube.page_size - 1) //
                            self.settings.youtube.page_size) * self.settings.youtube.maximum_http_attempts_per_call
                 if q["spent"] + q["reserved"] + reserve > min(q["budget"], budget):
+                    self.telemetry.emit("quota_denied", {"QuotaDeniedCount": 1}, error_code="YOUTUBE_QUOTA_EXHAUSTED")
                     raise JobError("YOUTUBE_QUOTA_EXHAUSTED")
                 q["reserved"] += reserve
                 work = WorkRecord(
@@ -225,6 +229,11 @@ class JobRepository:
                              cleanup_at=epoch(now) + self.settings.cache.idempotency_retention_seconds + PURGE_DELAY_SECONDS),
             ])
             if self.store.commit(changes):
+                self.telemetry.emit("admission", {"SubmissionCount": 1, "NewWorkCount": int(new_work),
+                    "CacheHitCount": int(cache_hit), "JoinedWorkCount": int(join),
+                    "QuotaReservedUnits": work.quota_remaining if new_work else 0},
+                    outcome="accepted" if new_work else "cache_hit" if cache_hit else "joined", work_id=work.work_id,
+                    release_id=work.model.release_id)
                 return Admission(request=request, work=work, replay=False)
         raise JobError("SYSTEM_BUSY")
 
@@ -348,6 +357,7 @@ class JobRepository:
                 budget = self.settings.youtube.working_daily_quota_units
                 current = dict(new_item.data) if new_item else {"spent": 0, "reserved": 0, "budget": budget}
                 if current["spent"] + current["reserved"] + work.quota_remaining > min(current["budget"], budget):
+                    self.telemetry.emit("quota_denied", {"QuotaDeniedCount": 1}, error_code="YOUTUBE_QUOTA_EXHAUSTED", work_id=work.work_id)
                     raise JobError("YOUTUBE_QUOTA_EXHAUSTED")
                 old["reserved"] -= work.quota_remaining
                 current["reserved"] += work.quota_remaining
@@ -359,6 +369,7 @@ class JobRepository:
                 # A resumed worker may need one extra call, but never a fresh full reservation.
                 if current["spent"] + current["reserved"] + 1 > min(
                         current["budget"], self.settings.youtube.working_daily_quota_units):
+                    self.telemetry.emit("quota_denied", {"QuotaDeniedCount": 1}, error_code="YOUTUBE_QUOTA_EXHAUSTED", work_id=work.work_id)
                     raise JobError("YOUTUBE_QUOTA_EXHAUSTED")
                 current["reserved"] += 1
                 remaining = 1
@@ -373,6 +384,8 @@ class JobRepository:
             changes.extend([self._quota_change(new_key, new_item, current), self._work_change(item, updated),
                             self._change(second_key, limiter, {"count": count + 1}, cleanup_at=epoch(now) + 3600)])
             if self.store.commit(changes):
+                self.telemetry.emit("quota_spent", {"YouTubeAttemptUnits": 1}, work_id=work.work_id, attempt=token,
+                                    release_id=work.model.release_id)
                 return updated
         raise JobError("SYSTEM_BUSY")
 
@@ -395,8 +408,17 @@ class JobRepository:
                                               "lease_until": None, "terminal_released": True})
             self._validate_terminal(updated)
             if self.store.commit(self._terminal_changes(item, updated)):
+                self._terminal_metrics(updated)
                 return updated.model_copy(update={"quota_remaining": 0})
         raise JobError("SYSTEM_BUSY")
+
+    def _terminal_metrics(self, work):
+        self.telemetry.emit("job_terminal", {"JobSucceededCount": int(work.state == "SUCCEEDED"),
+            "JobPartialCount": int(work.state == "PARTIAL"), "JobFailedCount": int(work.state == "FAILED"),
+            "AnalyzedCommentCount": work.progress.analyzed, "SkippedCommentCount": work.progress.skipped,
+            "JobDurationMillis": max(0.0, (work.updated_at - work.created_at).total_seconds() * 1000)},
+            outcome=work.state, work_id=work.work_id, error_code=work.failure.code if work.failure else None,
+            attempt=work.lease_token, release_id=work.model.release_id)
 
     @staticmethod
     def _validate_terminal(work):
@@ -435,6 +457,7 @@ class JobRepository:
                                                                  message="Analysis deadline exceeded", retryable=False),
                                               "terminal_released": True})
             if self.store.commit(self._terminal_changes(item, expired)):
+                self._terminal_metrics(expired)
                 return True
         raise JobError("SYSTEM_BUSY")
 

@@ -4,6 +4,7 @@ import logging
 
 from src.Sentiment_analysis.repositories.dynamo import Change
 from src.Sentiment_analysis.repositories.jobs import PURGE_DELAY_SECONDS, epoch
+from src.Sentiment_analysis.services.telemetry import Telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class Reconciler:
         self.jobs = jobs
         self.dispatcher = dispatcher
         self.objects = objects
+        self.telemetry = Telemetry(jobs.settings.environment, "maintenance")
 
     def run(self, *, limit=100):
         now = epoch(self.jobs.clock())
@@ -60,4 +62,7 @@ class Reconciler:
             except Exception:
                 counts["errors"] += 1
                 logger.warning("Serving maintenance operation failed: family=cleanup")
+        self.telemetry.emit("maintenance", {"MaintenanceErrorCount": counts["errors"],
+            "MaintenanceRecoveredCount": counts["recovered"], "MaintenanceDispatchedCount": counts["dispatched"],
+            "MaintenanceCleanedCount": counts["cleaned"]}, outcome="done")
         return counts

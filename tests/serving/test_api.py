@@ -48,6 +48,24 @@ class GatewayContext:
 
 
 class APITests(StorageFixture, unittest.TestCase):
+    def test_http_metrics_record_safe_routes_auth_denials_and_no_private_inputs(self):
+        private = "private-token-do-not-log"
+        response = self.client.get("/v1/models/current", headers={"Authorization": f"Bearer {private}"})
+        self.assertEqual(response.status_code, 401)
+        events = [r for r in self.telemetry_records if r["event"] == "api_request"]
+        self.assertEqual(len(events), 1)
+        self.assertEqual((events[0]["AuthDeniedCount"], events[0]["status_code"]), (1, 401))
+        self.assertEqual(events[0]["route"], "GET /v1/models/current")
+        self.assertNotIn(private, json.dumps(self.telemetry_records))
+        self.client.get("/private-person@example.test", params={"token": private})
+        self.assertEqual(self.telemetry_records[-1]["route"], "other")
+        self.assertNotIn("private-person", json.dumps(self.telemetry_records))
+        submitted = self.submit()
+        self.client.get(f"/v1/analyses/{submitted.json()['analysis_id']}")
+        last = self.telemetry_records[-1]
+        self.assertEqual(last["route"], "GET /v1/analyses/{analysis_id}")
+        self.assertNotIn(ALICE, json.dumps(self.telemetry_records))
+
     def test_submission_dispatch_worker_status_download_and_cache_flow(self):
         from src.Sentiment_analysis.entity.worker import WorkerIdentity
         from src.Sentiment_analysis.integrations.fixture_comments import FixtureCommentProvider

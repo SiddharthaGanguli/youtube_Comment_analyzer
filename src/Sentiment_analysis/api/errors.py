@@ -31,6 +31,7 @@ ERRORS = {
 def error_response(code, scope, now=None):
     now = now or datetime.now(timezone.utc)
     code = code if code in ERRORS else "DEPENDENCY_UNAVAILABLE"
+    scope.setdefault("state", {})["error_code"] = code
     status, message, retryable = ERRORS[code]
     request_id = scope.get("state", {}).get("request_id") or str(uuid4())
     retry, reset = None, None

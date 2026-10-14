@@ -425,6 +425,11 @@ Never return stack traces, keys, raw provider error bodies, or signed URLs in lo
 
 ## Authentication, storage, and retention
 
+Auth infrastructure and telemetry are now implemented and fixture-tested. The
+[auth walkthrough](serving-configuration.md#authentication-quota-controls-and-monitoring)
+explains Cognito/gateway templates, the mandatory S256 helper and safe metric
+fields. Cognito sign-in and the AWS serving stack are still undeployed.
+
 Use [Cognito authorization code with PKCE](https://docs.aws.amazon.com/cognito/latest/developerguide/using-pkce-in-authorization-code.html)
 and [chrome.identity.launchWebAuthFlow](https://developer.chrome.com/docs/extensions/reference/api/identity).
 Register the stable extension ID's Chromium redirect URL, validate OAuth state,

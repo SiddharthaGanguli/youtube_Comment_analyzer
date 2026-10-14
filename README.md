@@ -15,7 +15,7 @@ guide the backend implementation; deployment remains pending.
 Live YouTube sentiment analysis requires the analytics-use approval described
 in the design before it can be enabled.
 
-Backend steps 1 through 4 are implemented: [serving settings, storage, API and fixture worker](docs/serving-configuration.md)
+Backend steps 1 through 5 are implemented: [serving settings, storage, API, fixture worker and auth infrastructure](docs/serving-configuration.md)
 validate configuration, persist owned jobs, coordinate worker leases and queue
 delivery, and store private results with bounded retention. AWS adapter checks
 use local fixtures. FastAPI exposes owned submission/status/download/deletion,
@@ -25,8 +25,10 @@ No serving resources are deployed. Run
 to check `config/serving.yaml`. The worker resumes page/batch checkpoints, uses
 the shared predictor with one native thread, and publishes validated private
 results under the current lease. It currently accepts explicit development
-fixtures. Cognito deployment, live YouTube fetching and extension connection
-remain later steps.
+fixtures. The auth template defines Cognito, scoped gateway routes, throttles
+and alarms; an S256 PKCE helper and allowlisted serving metrics are tested too.
+Cognito deployment, live YouTube fetching and extension connection remain later
+steps. See the [auth/monitoring walkthrough](docs/serving-configuration.md#authentication-quota-controls-and-monitoring).
 
 To inspect the API locally without connecting to AWS:
 

@@ -10,13 +10,15 @@ from starlette.exceptions import HTTPException
 
 from src.Sentiment_analysis.api.errors import error_response
 from src.Sentiment_analysis.api.middleware import RequestBoundary
+from src.Sentiment_analysis.api.metrics import RequestMetrics
 from src.Sentiment_analysis.api.routes import router
 from src.Sentiment_analysis.config.serving import ServingConfigurationManager
 from src.Sentiment_analysis.entity.analysis import AnalysisResult
 from src.Sentiment_analysis.repositories.jobs import JobError
+from src.Sentiment_analysis.services.telemetry import Telemetry
 
 
-def create_app(settings=None, *, pipeline=None, pipeline_factory=None, clock=None):
+def create_app(settings=None, *, pipeline=None, pipeline_factory=None, clock=None, telemetry=None):
     if settings is None:
         import os
         settings = ServingConfigurationManager(os.environ.get("SERVING_CONFIG_PATH")).get_serving_config()
@@ -59,6 +61,7 @@ def create_app(settings=None, *, pipeline=None, pipeline_factory=None, clock=Non
                        allow_credentials=False, allow_methods=["GET", "POST", "DELETE"],
                        allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
                        expose_headers=["Location", "Retry-After", "X-Request-ID"], max_age=600)
+    app.add_middleware(RequestMetrics, telemetry=telemetry or Telemetry(settings.environment, "api"))
 
     def schema():
         if app.openapi_schema is None:

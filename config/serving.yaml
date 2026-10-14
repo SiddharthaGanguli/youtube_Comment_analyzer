@@ -114,6 +114,7 @@ auth:
   extension_id: null
 
 observability:
+  # Serving emits allowlisted CloudWatch EMF on stdout; no comments or identities.
   log_retention_days: 14
   include_comment_text_in_logs: false
   include_tokens_in_logs: false

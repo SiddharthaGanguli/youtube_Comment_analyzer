@@ -1,7 +1,7 @@
 # Backend implementation plan
 
 The [system design](system-design.md) sets the launch target and its limits.
-This checklist turns that design into small reviewable steps. Steps 1 through 4 are
+This checklist turns that design into small reviewable steps. Steps 1 through 5 are
 implemented and checked with offline fixtures; live fetching and deployment
 remain pending. Finish and verify each step, then commit and push it before
 starting the next, following the
@@ -90,15 +90,22 @@ undeployed. Model integration runs on small trained fixtures in Linux CI.
 
 ## 5. Authentication and quota controls
 
-- [ ] Configure Cognito public-client PKCE and HTTP API route scopes in AWS CDK.
+- [x] Configure Cognito public-client code flow and HTTP API route scopes in AWS
+  CDK; prepare the extension's mandatory S256 PKCE helper.
 - [x] Implement global/user admission counters, daily reservations, per-attempt
   spending, unused allowance release and Pacific-time quota rollover.
 - [x] Validate the storage ledger's retries and daylight-saving boundaries.
 - [x] Integrate spending with the worker: never issue a provider call without
   an allowance or reset a job's overall deadline.
-- [ ] Add structured metrics/logs without comments, names, tokens or keys.
+- [x] Add structured metrics/logs without comments, names, tokens or keys.
 
 Suggested commit: `feat: enforce user ownership and bounded YouTube quota use`.
+
+The [auth and telemetry walkthrough](serving-configuration.md#authentication-quota-controls-and-monitoring)
+describes the synthesized template, PKCE helper, metrics and checks. This step
+implements and tests infrastructure code; it does not create a Cognito pool or
+deployed login. Actual extension ID, API Lambda, notification routing and live
+sign-in checks belong to the extension/deployment stages.
 
 ## 6. YouTube integration
 

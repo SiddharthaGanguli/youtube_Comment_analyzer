@@ -3,6 +3,7 @@
 from src.Sentiment_analysis.entity.analysis import WorkMessage
 from src.Sentiment_analysis.repositories.dynamo import Change
 from src.Sentiment_analysis.repositories.jobs import PURGE_DELAY_SECONDS, epoch
+from src.Sentiment_analysis.services.telemetry import Telemetry
 
 
 class Dispatcher:
@@ -10,6 +11,7 @@ class Dispatcher:
         self.jobs = jobs
         self.sqs = sqs
         self.queue_for_release = queue_for_release
+        self.telemetry = Telemetry(jobs.settings.environment, "dispatcher")
 
     def dispatch(self, key):
         item = self.jobs.store.get(key)
@@ -29,8 +31,10 @@ class Dispatcher:
         self.sqs.send_message(QueueUrl=self.queue_for_release(message.release_id),
                               MessageBody=message.model_dump_json())
         data = dict(item.data, sent=True, sent_at=epoch(self.jobs.clock()))
-        return self.jobs.store.commit([Change(item.key, item.version, data,
-                                              cleanup_at=epoch(work.expires_at) + PURGE_DELAY_SECONDS)])
+        committed = self.jobs.store.commit([Change(item.key, item.version, data,
+                                                  cleanup_at=epoch(work.expires_at) + PURGE_DELAY_SECONDS)])
+        self.telemetry.emit("dispatch", {"DispatchCount": 1}, outcome="done", work_id=work.work_id)
+        return committed
 
     def handle_stream(self, event):
         failures = []
@@ -41,5 +45,6 @@ class Dispatcher:
             try:
                 self.dispatch(key)
             except Exception:
+                self.telemetry.emit("dispatch", {"DispatchFailureCount": 1}, outcome="retry")
                 failures.append({"itemIdentifier": record["dynamodb"]["SequenceNumber"]})
         return {"batchItemFailures": failures}

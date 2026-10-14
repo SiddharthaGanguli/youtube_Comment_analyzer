@@ -10,6 +10,7 @@ from src.Sentiment_analysis.entity.analysis import Failure, TERMINAL_STATES, Vid
 from src.Sentiment_analysis.entity.worker import WorkerCheckpoint, WorkerIdentity
 from src.Sentiment_analysis.integrations.fixture_comments import ProviderError
 from src.Sentiment_analysis.repositories.jobs import JobError
+from src.Sentiment_analysis.services.telemetry import Telemetry
 
 logger = logging.getLogger(__name__)
 FAILURES = {
@@ -44,6 +45,7 @@ class AnalysisPipeline:
             raise ValueError("Live comment fetching is disabled")
         self.processor = AnalysisProcessor(settings, predictor)
         self.monotonic, self.sleep = monotonic or time.monotonic, sleep or time.sleep
+        self.telemetry = Telemetry(settings.environment, "worker")
 
     def _assigned_model(self):
         from src.Sentiment_analysis.entity.analysis import ModelReference
@@ -156,12 +158,18 @@ class AnalysisPipeline:
     def process(self, message, *, context=None):
         """True means handled/duplicate; False asks SQS to retry this record."""
         if message.release_id != self.identity.model.release_id:
+            self.telemetry.emit("worker_delivery", {"WorkerDeliveryCount": 1, "MisroutedRecordCount": 1},
+                                outcome="misrouted", work_id=message.work_id)
             return False  # Misrouted messages go to the DLQ, never another release's work.
         work = self.jobs.claim(message)
         if work is None:
+            self.telemetry.emit("worker_delivery", {"WorkerDeliveryCount": 1, "DuplicateDeliveryCount": 1},
+                                outcome="duplicate", work_id=message.work_id)
             self.jobs.expire(message.work_id)
             return True
         started = self.monotonic()
+        self.telemetry.emit("worker_delivery", {"WorkerDeliveryCount": 1}, outcome="accepted", work_id=work.work_id,
+                            attempt=work.lease_token, release_id=work.model.release_id)
         try:
             if work.model != self.identity.model:
                 self._fail(work, "RELEASE_MISMATCH")
@@ -220,6 +228,8 @@ class AnalysisPipeline:
             return self._recover(work)
         except Exception:
             logger.warning("Analysis worker operation failed")
+            self.telemetry.emit("worker_dependency_error", {"WorkerDependencyFailureCount": 1},
+                                outcome="retry", work_id=work.work_id, attempt=work.lease_token)
             # Only this invocation's token can request recovery. Never read and
             # recover a newer worker's token after losing ownership.
             return self._recover(work)

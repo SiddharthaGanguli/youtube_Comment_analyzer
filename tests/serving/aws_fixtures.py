@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
+from unittest.mock import patch
 
 import boto3
 from botocore.config import Config
@@ -24,6 +25,10 @@ class StorageFixture:
     """Mixin for unittest cases; cleanup is registered even when setup later fails."""
 
     def setUp(self):
+        self.telemetry_records = []
+        telemetry_patch = patch("src.Sentiment_analysis.services.telemetry.stdout_document", self.telemetry_records.append)
+        telemetry_patch.start()
+        self.addCleanup(telemetry_patch.stop)
         self.aws = mock_aws(config={"core": {"service_whitelist": ["dynamodb", "s3", "sqs"]}})
         self.aws.start()
         self.addCleanup(self.aws.stop)

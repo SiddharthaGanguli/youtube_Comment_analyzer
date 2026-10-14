@@ -1,4 +1,4 @@
-# Backend settings, storage, API and fixture worker
+# Backend settings, storage, API, worker and authentication
 
 The backend starts with three pieces: a settings file, Python types describing
 those settings and our API data, and a manager that joins the two. We can check
@@ -599,6 +599,157 @@ Application Control currently blocks this machine's scikit-learn DLL; local
 protocol tests use synthetic predictions. These checks establish worker behavior
 and shared-model integration, not production capacity or live YouTube accuracy.
 
-The next stage covers deployed authentication, operational metrics and the live
-provider adapter. Extension sign-in and the measured 1,000-user AWS deployment
+The next section implements auth infrastructure and operational metrics. The
+live provider, connected extension sign-in and measured 1,000-user AWS deployment
 remain later steps in the backend plan.
+
+## Authentication, quota controls and monitoring
+
+Authentication has two jobs here: Cognito identifies the person, and the gateway
+checks that their access token may use a route. Our API then checks the verified
+context and uses the Cognito subject as the owner. Quota storage separately
+decides whether a request or provider attempt fits the configured limits.
+
+### Auth settings and infrastructure
+
+[auth-infrastructure.yaml](../config/auth-infrastructure.yaml) contains the
+deployment label, region, domain prefix and token lifetimes. It contains no AWS
+key, client secret, real extension ID or invented deployed resource ID.
+[entity/auth.py](../src/Sentiment_analysis/entity/auth.py) validates it, and
+[config/auth.py](../src/Sentiment_analysis/config/auth.py) loads it with the same
+duplicate-key protection as serving YAML.
+
+[infra/auth_stack.py](../infra/auth_stack.py) defines a retained Cognito user
+pool with email sign-in/verification, custom `analysis/read` and `analysis/write`
+scopes, and a public app client. Only authorization-code OAuth is enabled;
+implicit and client-credentials grants are absent. Password/SRP SDK flows are
+not enabled on this client. Access and ID tokens last 15 minutes, refresh tokens
+seven days, and token revocation is enabled.
+
+The real `ExtensionId` is a required CloudFormation parameter. Its callback is
+exactly `https://<id>.chromiumapp.org/cognito`, matching
+`chrome.identity.getRedirectURL("cognito")`; logout uses `/logout` on that same
+origin. The Cognito domain prefix appends the AWS account ID. API function
+`name[:alias]` is another required parameter, and its ARN is constructed in the
+stack account and region. No default fixture ID or cross-account function is
+silently selected.
+
+All five `/v1` routes use the JWT authorizer and their individual read/write
+scope. Only `/health/live` is public. There is no catch-all integration or public
+Swagger route. Lambda invoke permissions are restricted to this gateway,
+account and route methods. The existing Lambda must also have no alternate
+public function URL or unintended direct invoker; the template cannot inspect
+another deployment's existing permissions.
+
+The gateway uses the serving configuration's overall and POST-specific
+throttles. These gateway limits complement the authoritative application
+counters; they do not replace per-user admission or daily quota transactions.
+CORS has exactly the declared extension origin. API Gateway verifies JWT
+signatures/issuer/audience and required scopes, while the API additionally
+requires access-token use, the configured public client, expiry and owner UUID.
+See the [AWS JWT authorizer documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html).
+
+### S256 in the extension
+
+Cognito supports S256 when the authorization request supplies a challenge;
+its app-client configuration does not have a general require-PKCE switch. We
+therefore require PKCE in our own
+[auth-pkce.mjs](../extension/auth-pkce.mjs) request builder. Every request has a
+fresh 32-byte random verifier and state, `response_type=code`, and
+`code_challenge_method=S256`. The verifier never enters the authorization URL.
+This follows [Cognito's authorization flow](https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html)
+and [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
+
+The callback checker requires the exact HTTPS origin/path, matching state,
+one code, no duplicate fields, no implicit token or fragment, and an unexpired
+attempt. It consumes the pending attempt, clears the saved verifier and returns
+a form-encoded exchange descriptor for the trusted Cognito token endpoint.
+Redirects and browser credentials are disabled on that exchange descriptor.
+Provider errors remain generic; raw callback URLs and error descriptions are
+never logged by this helper.
+
+The helper performs no network request or storage write. Step 7 must call it
+only after a user clicks Sign in, keep pending state and tokens in trusted
+extension session storage, handle expiration/restarts, and use access tokens
+for the API. Typing an arbitrary bearer string into standalone Swagger still
+does not create a trusted gateway context. The preview's permissions and demo
+UI remain unchanged until the connection stage.
+
+### Metrics without comment or identity data
+
+[entity/telemetry.py](../src/Sentiment_analysis/entity/telemetry.py) permits only
+fixed event, outcome, route and error labels, numerical status/attempt values,
+opaque request/work UUIDs and a validated release fingerprint. It has no field for a comment, author, email,
+owner, credential, token, request body, full path, provider error text or signed URL.
+Rejected fields/metric names never reach the output sink.
+
+[services/telemetry.py](../src/Sentiment_analysis/services/telemetry.py) emits
+CloudWatch [embedded metric format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html)
+as JSON on stdout, without an AWS SDK call. Namespace is `CommentLens/Serving`;
+dimensions are only `Environment` and `Service`. Release/request/work IDs remain log
+fields rather than metric dimensions, keeping metric cardinality bounded.
+Unknown event/error labels, booleans used as counts, negative values and
+nonfinite numbers are rejected. A broken log sink does not change admission,
+quota spending or job publication.
+
+| Component | What it records |
+| --- | --- |
+| API middleware | Request count/latency, safe route template, status, auth/rate/dependency denials |
+| Job repository | New work, replay/join/cache outcomes, reserved and spent units, quota denials, terminal counts and duration |
+| Worker | Accepted, duplicate and misrouted deliveries; recoverable dependency failures |
+| Dispatcher/reconciler | Dispatch attempts/failures and recovery/cleanup/error totals |
+
+Spending and terminal metrics emit after successful conditional transactions.
+Heartbeats spend no provider units, and duplicate terminal delivery creates no
+second terminal count. `YouTubeAttemptUnits` means charged allowances, including
+an allowance wasted by a crash before the provider request. Logs are best effort;
+a crash between a database commit and emission can lose a metric. DynamoDB's
+spent/reserved counters remain the quota source of truth, not CloudWatch totals.
+
+API metrics use route templates or `other`, never the requested path/query.
+Requests rejected by the gateway never enter Lambda; gateway 4xx/throttle
+metrics and access logs cover them, while application auth counters cover
+denials that reach the app.
+Gateway access logs include request ID, matched route, status, response bytes
+and integration latency; they exclude IP, headers, claims and raw error text.
+The auth stack retains those logs for 14 days and defines alarms for gateway
+5xx errors, API dependencies, quota denials and failed jobs. Alarm notification
+destinations and the worker/queue/Lambda operational alarms are deployment work.
+Existing generic warning messages still omit exception text.
+
+During deployment, use text-format Lambda logging so emitted EMF stays at the
+log record root, grant normal scoped log-write permissions, and apply the
+14-day retention policy to each Lambda log group. CloudWatch creates the custom
+metrics from these records; no application `PutMetricData` permission is needed.
+Live cost/volume measurements still determine alarm thresholds and concurrency.
+
+### Synthesize and verify
+
+Install the infrastructure tools separately from deployed requirements:
+
+```powershell
+uv pip install --python .venv/Scripts/python.exe -r requirements-infra.txt
+.\.venv\Scripts\python.exe -m infra.app
+.\.venv\Scripts\python.exe -m unittest tests.infra.test_auth_stack tests.serving.test_telemetry -v
+node --test extension/tests/lib.test.mjs extension/tests/auth-pkce.test.mjs
+```
+
+Synthesis writes `artifacts/auth-infrastructure/CommentLensAuth-development.template.json`
+and a validation report. It performs no AWS context lookup, bootstrap, deployment,
+user creation or cost-incurring resource operation. Outputs describe the future
+issuer, public client, login/token endpoints, callback and API URL; they are
+CloudFormation expressions until deployment.
+
+Template checks cover every route's scope, public-client grant restrictions,
+exact callbacks, retention, CORS, invoke permissions, alarm dimensions and
+throttle serialization. JavaScript checks include the RFC S256 vector, fresh
+random values, replay/state/expiry failures and safe exchange destinations.
+Serving checks cover privacy, sink failures and unchanged transaction behavior.
+Linux CI also runs the full model pipeline and extension suite.
+
+Step 5 is implemented and fixture-tested, but sign-in is not deployed or connected.
+Before deployment, supply the stable extension ID and existing API function,
+copy real public outputs into serving/extension settings, audit invocation
+permissions, configure log/notification delivery and verify sign-in with a real
+Cognito user. Verify email-delivery/service quotas for the launch target as part
+of deployment. Live YouTube analysis stays disabled while step 6 remains pending.

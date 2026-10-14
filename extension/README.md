@@ -99,3 +99,10 @@ extension bundle. The preview still uses the demo fixture. Live YouTube
 fetching, connecting the extension, and AWS deployment remain future
 work. HTTP routes and the fixture worker are implemented and tested separately;
 this preview still makes no backend requests.
+
+`auth-pkce.mjs` prepares the later sign-in flow: fresh state/verifier, mandatory
+S256, an exact Chromium callback and a one-use token-exchange descriptor. It
+performs no request and stores no token. The UI does not call it yet; `identity`
+permissions, restricted session storage and deployed public settings are added
+when connecting the extension. Run both module suites with
+`node --test extension/tests/lib.test.mjs extension/tests/auth-pkce.test.mjs`.
