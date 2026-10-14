@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How Comment Lens handles information in its demo and planned YouTube comment analysis service.">
+  <meta name="referrer" content="no-referrer">
+  <title>Privacy Policy | Comment Lens</title>
+  <link rel="stylesheet" href="privacy.css">
+</head>
+<body>
+  <a class="skip-link" href="#policy">Skip to privacy policy</a>
+  <header class="policy-header">
+    <a class="brand" href="dashboard.html">Comment Lens</a>
+    <a href="dashboard.html">Back to demo</a>
+  </header>
+  <main>
+    <article id="policy">
+      <h1>Privacy Policy</h1>
+      <p class="policy-meta">Comment Lens | Version 0.1 | Last updated: 14 October 2026</p>
+      <p class="notice"><strong>Current status:</strong> Comment Lens is a development preview with handwritten sample comments. Live YouTube analysis, account sign-in, and cloud result storage are not available in the preview. Sections marked "planned live service" explain the intended launch behavior.</p>
+
+      <h2>1. Who is responsible for your information</h2>
+      <p>Siddhartha Ganguli develops and maintains Comment Lens as an independent personal project. For privacy questions, corrections, or deletion requests, email <a href="mailto:siddharthaganguli0093@gmail.com">siddharthaganguli0093@gmail.com</a>.</p>
+
+      <h2>2. Information used by the current preview</h2>
+      <p>When you open the extension popup, its active-tab permission lets it read that tab's title and URL to recognize a YouTube video. You can also paste a video link yourself. The selected link stays in the dashboard URL and may appear in your browser history. The preview does not send it to a Comment Lens backend or to YouTube.</p>
+      <p>Charts, search, filters, and comment details use sample data packaged with the extension. These interactions happen in your browser. The preview has no account sign-in, advertising, analytics trackers, tracking cookies, or embedded YouTube player. A CSV export is saved on your device when you choose Export CSV.</p>
+      <p>If you view these pages through a web server, that server receives normal page requests, which may include your IP address, browser information, requested URL, and access time. A local preview server may log those requests. The hosting provider and its log-retention details will be identified before a public website is launched.</p>
+
+      <h2>3. Information needed by the planned live service</h2>
+      <p>The live version is designed to use YouTube API Services, specifically YouTube Data API v3, to retrieve a limited sample of public information for the video you select:</p>
+      <ul>
+        <li><strong>Video information:</strong> video ID, title, channel name, publication time, and available comment count.</li>
+        <li><strong>Comment information:</strong> public comment IDs, displayed text, author display names, likes, and publication times for up to 1,000 top-level comments.</li>
+        <li><strong>Account and request information:</strong> an account email handled by Amazon Cognito, an internal account identifier, selected video ID, analysis request IDs, timestamps, and usage counters.</li>
+        <li><strong>Analysis information:</strong> sentiment labels, model scores, processing status, sample coverage, and model version.</li>
+      </ul>
+      <p>Account sign-in is planned through Amazon Cognito. The planned public-comment workflow does not use Google account authorization or request access to private YouTube information.</p>
+
+      <section data-pdf-page="2">
+        <h2>4. Why the planned live service uses this information</h2>
+        <p>Video and comment information will support the analysis you request: displaying the selected video, estimating sentiment in its sampled comments, and letting you inspect the original comment context. Account and request information will control access to your analysis history, apply usage limits, and handle errors or abuse.</p>
+        <p>Sentiment estimates will be generated independently by Comment Lens. They describe a sample and can be wrong, especially for sarcasm or unfamiliar language. The serving workflow uses an existing model for prediction; it does not automatically add fetched comments to the model's training dataset. It is designed to analyze comment tone, without inferring sensitive personal characteristics about commenters.</p>
+
+        <h2>5. Sharing and service providers</h2>
+        <p>In the planned live service, YouTube will receive server-side API requests identifying the requested video. Google's handling of information is described in the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>. YouTube use is also governed by the <a href="https://www.youtube.com/t/terms">YouTube Terms of Service</a>.</p>
+        <p>Amazon Web Services will provide account authentication, processing, and private storage. The initial serving region is planned as Northern Virginia, United States (us-east-1), so information may be processed outside your country.</p>
+        <p>Several users requesting the same public video may receive the same cached public comments and predictions. Their account details and owned analysis history will stay separate. A result-download link gives access to that result until the link expires; keep it private.</p>
+        <p>Privacy emails go to the contact's Gmail mailbox. Only the information needed to answer or verify a request should be included. Information may also be disclosed when required by a valid legal obligation. Comment Lens has no sale of personal information, advertising network, or data-broker integration.</p>
+
+        <h2>6. Retention in the planned live service</h2>
+        <ul>
+          <li><strong>Analysis results and fetched comments:</strong> access expires after 24 hours. Scheduled cleanup then removes stored objects, including old object versions. A seven-day storage cleanup backstop is planned for missed or orphaned objects; physical deletion is separate from access expiry.</li>
+          <li><strong>Request records:</strong> expired metadata is scheduled for removal after an additional one-hour cleanup window. Usage-accounting records have a separate short cleanup cycle.</li>
+          <li><strong>Application logs:</strong> the planned retention is 14 days. Allowed diagnostic fields include request IDs, timing, counts, and error codes; comment text, author names, emails, tokens, and credentials are excluded.</li>
+          <li><strong>Account information:</strong> it is retained until account closure and the related deletion are completed. Analysis expiry and signing out do not delete an account.</li>
+        </ul>
+        <p>Downloaded CSV files stay on your device until you delete them. Privacy correspondence is kept only as long as needed to resolve the request or meet a specific legal obligation. Website hosting logs will have their own disclosed retention before public launch.</p>
+      </section>
+
+      <section data-pdf-page="3">
+        <h2>7. Your choices and deletion requests</h2>
+        <p>In the preview, close the dashboard or remove the extension to stop its use. You can clear the selected video link from browser history and delete exported CSV files using your browser or device controls.</p>
+        <p>For information held by Comment Lens, email <a href="mailto:siddharthaganguli0093@gmail.com">siddharthaganguli0093@gmail.com</a> with the subject "Comment Lens privacy request." Explain whether you want access, correction, deletion, or an account closure. Include an analysis request ID or public video/comment link when it helps identify the information. Requests from people whose comments appear in a live analysis can use the same contact.</p>
+        <p>Reasonable identity checks may be needed to avoid deleting or revealing someone else's information. Valid deletion requests for stored user-related YouTube data will be handled as soon as possible and within seven calendar days of receipt, with any necessary verification handled promptly. Specific information may be kept where a legal obligation requires it; the reason will be explained.</p>
+        <p>In the planned live service, removing an owned analysis request ends new access through that history entry. Shared public results may remain until their normal expiry. Previously issued download links may work for up to five minutes. To request removal of the underlying cached data or an account, use the privacy email; an automated account-deletion screen is not available in the preview.</p>
+        <p>Deleting information from Comment Lens does not remove the original video or comment from YouTube. Changes to that original content must be made through YouTube. Copies that users have already downloaded are outside Comment Lens's storage controls.</p>
+
+        <h2>8. Security and browser storage</h2>
+        <p>The planned live backend uses encrypted connections, private cloud storage, ownership checks, limited service permissions, and expiring download links. API credentials belong on the backend. The current preview stores no login tokens; live sign-in may use essential session storage and cookies managed by the authentication provider. Those details will be disclosed before sign-in is enabled.</p>
+        <p>Security controls reduce risk but cannot guarantee that every transmission or device is secure. Privacy questions or suspected disclosures can be reported to the contact below.</p>
+
+        <h2>9. Changes and future features</h2>
+        <p>This policy will be updated before live features or public hosting change the information handled by the preview. The updated page will show a new revision date and explain material changes. Agreement to the privacy policy will be requested before live API features become available.</p>
+        <p>This project is not designed specifically for children. A parent or guardian who believes a child has provided personal information can contact the developer for review and deletion. Privacy rights may vary by location; you can use the same contact to ask about rights that apply to your information.</p>
+
+        <h2>10. Contact</h2>
+        <p><strong>Developer:</strong> Siddhartha Ganguli<br><strong>Project:</strong> Comment Lens<br><strong>Privacy contact:</strong> <a href="mailto:siddharthaganguli0093@gmail.com">siddharthaganguli0093@gmail.com</a></p>
+      </section>
+    </article>
+  </main>
+  <footer class="policy-footer">Comment Lens | Development preview | <a href="dashboard.html">Return to demo</a></footer>
+</body>
+</html>

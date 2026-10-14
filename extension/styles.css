@@ -247,6 +247,7 @@ body.popup { width: 360px; min-width: 360px; background: white; }
 .popup .button { margin-top: 14px; min-height: 41px; }
 .popup #try-demo { margin-top: 9px; font-size: 11px; }
 .popup-note { margin: 19px 0 0; color: var(--muted); text-align: center; font-size: 10px; line-height: 1.8; }
+.popup-privacy { margin: 10px 0 0; text-align: center; font-size: 12px; }
 
 @media (min-width: 1550px) { .workspace main { padding-top: 38px; } .charts-grid { grid-template-columns: 1fr 1.25fr; } }
 @media (max-width: 1150px) {

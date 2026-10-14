@@ -34,6 +34,29 @@ Open `http://127.0.0.1:8765/popup.html` or
 `http://127.0.0.1:8765/dashboard.html`. Browser previews support URL entry and
 dashboard interactions; detecting the active YouTube tab requires the extension.
 
+## Privacy policy
+
+The popup and dashboard link to `privacy.html`. It describes the current local
+preview separately from the planned live service, including YouTube data use,
+AWS processing, cache sharing, retention and email deletion requests. The public
+privacy contact is `siddharthaganguli0093@gmail.com`, supplied by the developer.
+The page uses local CSS and no script, remote fonts or embedded media.
+
+The upload PDF is `../output/pdf/comment-lens-privacy-policy.pdf`. Its text and
+links are exported from the HTML page, so edit the page and rebuild the PDF with:
+
+    uv run scripts/export_privacy_policy.py
+
+Run that command from the repository root. The script declares its own document
+dependency; it does not add packages to the application's runtime requirements.
+Open `http://127.0.0.1:8765/privacy.html` to review the page locally.
+
+The PDF is prepared for the audit form's first evidence box. The policy page is
+not publicly hosted yet; it still needs a real HTTPS URL for the form. Hosting
+provider details and live consent/account controls must be finalized before the
+relevant features are launched. Homepage branding evidence and terms
+documentation are separate tasks.
+
 ## Where to make changes
 
 | File | What it does |
