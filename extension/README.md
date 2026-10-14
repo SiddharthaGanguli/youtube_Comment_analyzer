@@ -54,8 +54,8 @@ Open `http://127.0.0.1:8765/privacy.html` to review the page locally.
 The PDF is prepared for the audit form's first evidence box. The policy page is
 not publicly hosted yet; it still needs a real HTTPS URL for the form. Hosting
 provider details and live consent/account controls must be finalized before the
-relevant features are launched. Homepage branding evidence remains a separate
-task.
+relevant features are launched. The demo homepage and branding are described
+below; the final browser-window evidence still needs its address bar.
 
 ## Terms of Service
 
@@ -77,6 +77,30 @@ real public HTTPS destinations are supplied.
 Review locally at `http://127.0.0.1:8765/terms.html`. Terms and privacy pages
 still need public hosting; these PDF files are evidence documents, not URLs.
 
+## Homepage and screenshot evidence
+
+`index.html` is the demo homepage, linked from the app and legal pages.
+It displays the Privacy Policy link in its header, a second policy link in
+the privacy card, the development/demo notice, and an official YouTube logo
+in a separate planned-integration card. The logo is unchanged, keeps its
+proportions and links to YouTube. Its provenance is in `assets/README.md`.
+The extension manifest's product name is now **Comment Lens**.
+
+Open `http://127.0.0.1:8765/index.html` with the preview server running.
+`../output/evidence/homepage-preview.jpg` is an actual page-content capture;
+it has no browser address bar and is a preview, not final audit evidence.
+
+For the **Homepage Screenshot** evidence box, capture the actual Chrome window
+including its address bar with Windows Snipping Tool (Win+Shift+S, Window mode).
+Keep the Privacy Policy link, YouTube branding and demo notice visible. Use
+PNG or JPEG, at least 1280x720 pixels, and a file below 10 MB. Use the real local
+URL when reviewing a local prototype; replace it with the real HTTPS URL after
+hosting. Do not draw a browser bar or invent a deployment address.
+
+The form's screenshot quality requirements are documented in the
+[official audit form](https://support.google.com/youtube/contact/yt_api_form?hl=en).
+Public HTTPS hosting and the final window capture remain pending.
+
 ## Where to make changes
 
 | File | What it does |
@@ -86,6 +110,7 @@ still need public hosting; these PDF files are evidence documents, not URLs.
 | `dashboard.html`, `dashboard.mjs` | Dashboard sections and interactions |
 | `styles.css` | Shared layout, colors, typography, and responsive rules |
 | `privacy.html`, `terms.html`, `privacy.css` | Legal pages and their shared layout |
+| `index.html`, `home.css`, `assets/` | Demo homepage and official YouTube branding |
 | `demo-data.mjs` | Handwritten comment sample and current baseline metrics |
 | `lib.mjs` | URL parsing, filtering, summary counts, and CSV formatting |
 

@@ -887,11 +887,24 @@ limitations, responsible use, content rights and result expiration.
 Hosting provider/log details and live privacy consent/account controls need
 finalization before launch.
 
-The form still needs a public HTTPS policy URL, a homepage screenshot showing
-its policy link and YouTube attribution, and a fresh
-dashboard screenshot with its demo label and browser address bar. These pages
-have not been published. Supply real review URLs and label preview data
-accurately.
+The [demo homepage](../extension/index.html) now shows the Privacy Policy link
+and a separate official YouTube branding block. It links to the demo and legal
+pages, and those pages link back Home. The extension name is now **Comment Lens**
+in its manifest. [The page preview](../output/evidence/homepage-preview.jpg)
+captures actual local page content; its capture API does not include Chrome's
+address bar, so it is not the final audit screenshot.
+
+For the Homepage Screenshot box, use Windows Snipping Tool to capture the actual
+Chrome window with the address bar, policy link, logo and demo notice visible.
+The [audit form](https://support.google.com/youtube/contact/yt_api_form?hl=en)
+asks for readable evidence at least 1280x720 pixels, including the browser
+address bar, and one file smaller than 10 MB. Keep the real local URL for a
+prototype screenshot; use a real HTTPS URL once published.
+
+The form still needs public HTTPS app/policy URLs, that final homepage window
+capture, and a fresh dashboard screenshot with its demo label and browser
+address bar. These pages have not been published. Supply real review URLs and
+label preview data accurately.
 
 This draft describes the current implementation and proposed live behavior:
 

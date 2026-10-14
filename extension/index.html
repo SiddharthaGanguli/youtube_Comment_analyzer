@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore the Comment Lens demo, read its privacy policy, and learn about its planned public-comment analysis service.">
+  <meta name="referrer" content="no-referrer">
+  <title>Comment Lens | Demo homepage</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="home.css">
+</head>
+<body class="home">
+  <a class="skip-link" href="#home-main">Skip to homepage</a>
+  <header class="home-header">
+    <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">▰</span> Comment Lens</a>
+    <nav aria-label="Main navigation">
+      <a href="dashboard.html">Demo dashboard</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Service</a>
+    </nav>
+  </header>
+  <main id="home-main" class="home-main">
+    <section class="home-hero" aria-labelledby="home-title">
+      <div class="hero-copy">
+        <span class="badge preview">Development preview · Demo data</span>
+        <h1 id="home-title">Understand the<br>conversation.</h1>
+        <p class="hero-description">A clearer view of comment feedback. Explore sentiment summaries, read individual comments, and keep the context close.</p>
+        <div class="home-actions">
+          <a class="button primary" href="dashboard.html">Explore the demo <span aria-hidden="true">→</span></a>
+          <a class="home-install" href="https://github.com/SiddharthaGanguli/youtube_Comment_analyzer/tree/main/extension#try-it-in-chrome" target="_blank" rel="noopener noreferrer">Extension setup</a>
+        </div>
+        <p class="home-demo-note">This preview uses 24 handwritten sample comments. Entering a video link does not fetch live comments. Live analysis is not available yet.</p>
+      </div>
+      <aside class="home-preview" aria-label="Features in the sample dashboard">
+        <div class="preview-heading"><span class="eyebrow">IN THE DEMO</span><span class="badge preview">Sample comments</span></div>
+        <h2>A little clarity behind every comment.</h2>
+        <div class="home-sentiments"><span class="home-positive">Positive</span><span class="home-neutral">Neutral</span><span class="home-negative">Negative</span></div>
+        <ul class="home-feature-list">
+          <li><span aria-hidden="true">✓</span> Sentiment and coverage summaries</li>
+          <li><span aria-hidden="true">✓</span> Search, filters, and comment details</li>
+          <li><span aria-hidden="true">✓</span> CSV export of matching comments</li>
+        </ul>
+        <p>These are sample labels. Live model estimates can be wrong; read the original context.</p>
+      </aside>
+    </section>
+    <section class="home-info" aria-label="Privacy and planned integration">
+      <article class="home-privacy-card">
+        <span class="eyebrow">YOUR INFORMATION</span>
+        <h2>Privacy, in plain language.</h2>
+        <p>See what the preview handles, how the planned live service will use public comments, and how to contact the developer about deletion.</p>
+        <a class="home-policy-link" href="privacy.html">Read the Privacy Policy <span aria-hidden="true">→</span></a>
+      </article>
+      <article class="home-provider-card">
+        <span class="eyebrow">PLANNED API INTEGRATION</span>
+        <a class="youtube-attribution" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" aria-label="Visit YouTube">
+          <img src="assets/developed-with-youtube.png" width="350" height="125" alt="Developed with YouTube">
+        </a>
+        <p>The planned service uses YouTube API Services for public video information and sampled comments. Live features remain disabled during review and deployment.</p>
+        <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube Terms of Service</a>
+      </article>
+    </section>
+  </main>
+  <footer class="home-footer">
+    <span>Created by Siddhartha Ganguli</span>
+    <nav aria-label="Legal information"><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Service</a><a href="mailto:siddharthaganguli0093@gmail.com">Contact</a></nav>
+    <span>Comment Lens · Development preview</span>
+  </footer>
+</body>
+</html>

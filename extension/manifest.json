@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Comment Lens — YouTube Comment Analyzer",
+  "name": "Comment Lens",
   "version": "0.1.0",
   "description": "Preview a clear dashboard for YouTube comment sentiment and comment exploration.",
   "permissions": ["activeTab"],
