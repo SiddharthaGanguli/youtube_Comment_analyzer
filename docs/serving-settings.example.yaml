@@ -21,7 +21,7 @@ youtube:
   analytics_use_approved: false
   approval_reference: null
   api_key_secret_arn: arn:aws:secretsmanager:us-east-1:895812756022:secret:comment-lens/youtube-api-key-1P4SMe  # Secret reference only.
-  project_quota_verified: false
+  project_quota_verified: true  # Console screenshot verified on 2026-10-14.
   visibility: public
   order: time
   text_format: plainText

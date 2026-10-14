@@ -779,19 +779,27 @@ settings before creating live clients. `live_enabled` requires recorded
 analytics-use approval, a nonblank approval reference, a regional Secrets
 Manager ARN and verified project quota. A copied settings object cannot skip
 those checks. The checked-in secret ARN points to the project's `us-east-1`
-secret; live fetching stays disabled and approval/quota verification stays unset.
+secret; live fetching stays disabled while analytics-use approval remains unverified.
 
 The secret ARN is recorded in serving YAML. Its contents and worker-role access
 have not been verified from this workstation, which has no configured AWS role
 or profile.
 
 `youtube.project_id` records `applied-polymer-511605-m3` as the Google Cloud
-project supplied for this setup. This metadata does not verify the key's project
-association, the daily allocation or analytics-use approval. A green status icon
-on a console page does not provide the numeric quota or an approval reference.
+project supplied for this setup. On 2026-10-14, the user-provided Google Cloud
+quota screenshot showed `youtube.googleapis.com` enabled, general **Queries per
+day = 10,000**, and current usage of zero. That evidence records
+`project_quota_verified: true` with a 10,000-unit daily allocation. The existing
+80% working allowance remains 8,000 units. The separate search and other method
+quota rows are not added to this budget.
 
-Record the approval reference and actual project quota before enabling live
-fetching. To collect or update these details:
+This screenshot does not verify the key's project association or analytics-use
+approval. The approval reference is still pending. Quota verification records
+the console evidence, without an authenticated Google Cloud query from this
+workstation; recheck the project's allocation before production deployment.
+
+Record the approval reference before enabling live fetching. To collect or
+update these details:
 
 1. Record the case/reference from the YouTube analytics-use approval email.
    The [derived-metrics policy](https://developers.google.com/youtube/terms/derived-metrics-policy)
@@ -916,7 +924,7 @@ AWS fixtures. Run them alongside the existing serving checks:
 ```
 
 The adapter and worker wiring are implemented. The small live verification
-has not run: approval/quota evidence, verification of the configured secret and
+has not run: analytics-use approval evidence, verification of the configured secret and
 worker-role access, assigned
 serving table and immutable worker release must be ready first. No serving
 AWS resources were created in this stage. Use the normal admitted job → outbox

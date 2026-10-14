@@ -3,7 +3,7 @@
 The [system design](system-design.md) sets the launch target and its limits.
 This checklist turns that design into small reviewable steps. Steps 1 through 5 are
 implemented and checked with offline fixtures. Step 6's adapter and worker
-integration are implemented; approval/quota evidence and its live sample remain
+integration are implemented and project quota is recorded; approval evidence and its live sample remain
 pending, along with extension connection and deployment. Finish and verify each step, then commit and push it before
 starting the next, following the
 project's existing workflow.
@@ -110,7 +110,9 @@ sign-in checks belong to the extension/deployment stages.
 
 ## 6. YouTube integration
 
-- [ ] Verify analytics-use approval and the project's actual daily allocation.
+- [x] Record the project's 10,000-unit daily allocation from the user-provided
+  Google Cloud quota screenshot on 2026-10-14; keep an 8,000-unit working allowance.
+- [ ] Verify analytics-use approval and record its reference.
 - [x] Add the fixed-origin YouTube adapter, public-video metadata check, bounded
   latest top-level pagination, safe timeouts and classified provider errors.
 - [x] Resume from checkpoints and enforce retry/reservation limits. No scraping,

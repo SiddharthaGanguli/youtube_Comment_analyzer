@@ -72,7 +72,8 @@ def main():
     print(f"Serving configuration valid ({config.environment})")
     print(f"Live YouTube analysis: {'enabled' if config.youtube.live_enabled else 'disabled'}")
     print(f"Serving release: {'assigned' if config.model.release_id else 'not assigned yet'}")
-    print(f"Working daily quota: {config.youtube.working_daily_quota_units} units (configured, not externally verified)")
+    quota_status = "project allocation marked verified" if config.youtube.project_quota_verified else "configured, not externally verified"
+    print(f"Working daily quota: {config.youtube.working_daily_quota_units} units ({quota_status})")
 
 
 if __name__ == "__main__":
