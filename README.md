@@ -7,6 +7,19 @@ popup that opens a full dashboard tab. It currently uses clearly labeled sample
 comments, with sentiment charts, coverage, filters, comment details and CSV
 export. Connecting live analysis and deploying the AWS backend remain pending.
 
+The static [Comment Lens demo](https://siddharthaganguli.github.io/youtube_Comment_analyzer/),
+[dashboard](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html),
+[Privacy Policy](https://siddharthaganguli.github.io/youtube_Comment_analyzer/privacy.html)
+and [Terms of Service](https://siddharthaganguli.github.io/youtube_Comment_analyzer/terms.html)
+are published on GitHub Pages. The demo makes no YouTube Data API or Comment
+Lens backend calls. GitHub receives page requests and logs visitor IP addresses;
+the privacy policy explains dashboard URLs that may contain a selected video
+link. The [Pages workflow](.github/workflows/pages.yaml) publishes only the
+builder's allowlist of static demo files, excluding backend configuration,
+credentials, datasets and model artifacts. Live analytics-use approval and AWS
+deployment remain pending, as does the genuine browser-window capture required
+for audit evidence.
+
 The [serving system design](docs/system-design.md) targets 1,000 active users
 with separate API and model workers, bounded YouTube fetching, shared public
 results, durable jobs, and a low initial AWS cost. The

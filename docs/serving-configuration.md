@@ -853,13 +853,21 @@ the project ID on the Cloud dashboard. It also asks for a public HTTPS privacy
 policy and dashboard evidence. The project ID recorded here is
 `applied-polymer-511605-m3`; `youtube.project_number` records `170746039104`
 from the user's pasted audit form. Confirm their association in Cloud project
-information before submitting. A published privacy-policy URL has not yet been
-supplied. Use actual values and label preview screenshots as demo data.
+information before submitting. The static demo and legal pages are now published
+on GitHub Pages; their HTTPS pages and assets were verified on 2026-10-14. Use
+the exact URLs below and label preview screenshots as demo data.
 
-For the pasted Section 5, use these values:
+For the pasted Sections 4 and 5, use these values:
 
 | Field | Value for this design |
 | --- | --- |
+| API client name | Comment Lens |
+| Client name contains YouTube | No |
+| Publicly accessible | Yes, the static demo; the live backend is not deployed |
+| Primary Access URL | https://siddharthaganguli.github.io/youtube_Comment_analyzer/ |
+| Privacy Policy URL | https://siddharthaganguli.github.io/youtube_Comment_analyzer/privacy.html |
+| Terms of Service URL | https://siddharthaganguli.github.io/youtube_Comment_analyzer/terms.html |
+| Dashboard review URL | https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html |
 | Number of projects | 1 |
 | Google Cloud project number | `170746039104`, as supplied |
 | Use case | Analytics & Reporting |
@@ -872,10 +880,10 @@ The usage dropdown choices were not included in the pasted form. Match its
 displayed units/range to expected API use; the 1,000-user target is not an API
 request estimate. A configured ceiling is also not a measured daily forecast.
 
-The privacy policy is prepared as [an HTML page](../extension/privacy.html) and
-[an upload PDF](../output/pdf/comment-lens-privacy-policy.pdf). The Terms of
-Service are prepared as [an HTML page](../extension/terms.html) and
-[an upload PDF](../output/pdf/comment-lens-terms-of-service.pdf). The developer
+The privacy policy is published as [an HTML page](https://siddharthaganguli.github.io/youtube_Comment_analyzer/privacy.html), with
+[a separate upload PDF](../output/pdf/comment-lens-privacy-policy.pdf). The Terms
+of Service are published as [an HTML page](https://siddharthaganguli.github.io/youtube_Comment_analyzer/terms.html), with
+[a separate upload PDF](../output/pdf/comment-lens-terms-of-service.pdf). The developer
 confirmed `siddharthaganguli0093@gmail.com` as the public contact.
 Popup and dashboard footers link to both pages. The privacy policy explains current preview
 behavior separately from the undeployed live service, including public comment
@@ -884,27 +892,37 @@ The privacy PDF is for the first evidence upload; the terms PDF is for
 **Terms of Service Documentation**, the third upload. Neither is a public URL.
 The terms include the YouTube Terms of Service agreement and explain model
 limitations, responsible use, content rights and result expiration.
-Hosting provider/log details and live privacy consent/account controls need
-finalization before launch.
+The static demo makes no YouTube Data API or Comment Lens backend calls. GitHub
+receives page/asset requests and logs visitor IP addresses for security; opening
+or reloading a dashboard URL containing a selected video link sends that URL to
+GitHub too. The privacy policy identifies this hosting behavior and separate
+provider retention. Live privacy consent/account controls remain pending.
 
-The [demo homepage](../extension/index.html) now shows the Privacy Policy link
+The [published demo homepage](https://siddharthaganguli.github.io/youtube_Comment_analyzer/) now shows the Privacy Policy link
 and a separate official YouTube branding block. It links to the demo and legal
 pages, and those pages link back Home. The extension name is now **Comment Lens**
 in its manifest. [The page preview](../output/evidence/homepage-preview.jpg)
-captures actual local page content; its capture API does not include Chrome's
+captures the published homepage content; its capture API does not include Chrome's
 address bar, so it is not the final audit screenshot.
 
 For the Homepage Screenshot box, use Windows Snipping Tool to capture the actual
 Chrome window with the address bar, policy link, logo and demo notice visible.
 The [audit form](https://support.google.com/youtube/contact/yt_api_form?hl=en)
 asks for readable evidence at least 1280x720 pixels, including the browser
-address bar, and one file smaller than 10 MB. Keep the real local URL for a
-prototype screenshot; use a real HTTPS URL once published.
+address bar, and one file smaller than 10 MB. Open the published Homepage URL
+above for the final capture so its real HTTPS address is visible.
 
-The form still needs public HTTPS app/policy URLs, that final homepage window
-capture, and a fresh dashboard screenshot with its demo label and browser
-address bar. These pages have not been published. Supply real review URLs and
-label preview data accurately.
+The public HTTPS app/policy URLs are available. The genuine homepage window
+capture and a fresh dashboard screenshot with its demo label and browser address
+bar remain manual steps. Publication does not grant YouTube analytics-use
+approval or deploy the AWS backend; both remain pending.
+
+The [Pages workflow](../.github/workflows/pages.yaml) checks the extension's two
+JavaScript suites, stages an explicit static-file allowlist with
+`scripts/build_pages_site.py`, and deploys `_site` through GitHub Pages. Only
+the homepage/dashboard/legal HTML, their CSS and dashboard/demo/library scripts,
+the official logo and `.nojekyll` are published. Backend code, configuration,
+credentials, datasets and model artifacts are excluded from the site artifact.
 
 This draft describes the current implementation and proposed live behavior:
 

@@ -18,8 +18,8 @@ Selecting a real YouTube URL does not fetch or analyze its comments yet.
 4. Choose **Open dashboard** or **Explore the demo**.
 
 The popup reads the current tab's title and URL only when invoked, using
-`activeTab`. The preview makes no external requests. JavaScript is packaged
-locally, following Chrome's [Manifest V3 format](https://developer.chrome.com/docs/extensions/reference/manifest),
+`activeTab`. The preview makes no YouTube Data API or Comment Lens backend
+calls. JavaScript is packaged locally, following Chrome's [Manifest V3 format](https://developer.chrome.com/docs/extensions/reference/manifest),
 [activeTab guidance](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab),
 and [extension content security policy](https://developer.chrome.com/docs/extensions/reference/manifest/content-security-policy).
 
@@ -34,9 +34,41 @@ Open `http://127.0.0.1:8765/popup.html` or
 `http://127.0.0.1:8765/dashboard.html`. Browser previews support URL entry and
 dashboard interactions; detecting the active YouTube tab requires the extension.
 
+## Published demo
+
+The static demo is published on GitHub Pages. These HTTPS pages and their assets
+were verified on 14 October 2026:
+
+| Page | Public URL |
+| --- | --- |
+| Homepage / Primary Access | https://siddharthaganguli.github.io/youtube_Comment_analyzer/ |
+| Dashboard | https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html |
+| Privacy Policy | https://siddharthaganguli.github.io/youtube_Comment_analyzer/privacy.html |
+| Terms of Service | https://siddharthaganguli.github.io/youtube_Comment_analyzer/terms.html |
+
+Initial publication passed the [Pages deployment](https://github.com/SiddharthaGanguli/youtube_Comment_analyzer/actions/runs/38549129835)
+and [Pipeline checks](https://github.com/SiddharthaGanguli/youtube_Comment_analyzer/actions/runs/38549129822)
+for commit `dbb7e5b`. Browser checks also covered legal-page navigation and
+dashboard filtering/search on the hosted demo.
+
+GitHub receives requests for these pages and assets and logs visitor IP addresses
+for security. Opening or reloading a dashboard URL containing a selected video
+link also sends that URL to GitHub. See the published privacy policy and
+[GitHub's Privacy Statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
+The dashboard still uses handwritten samples; live analysis, analytics-use
+approval and AWS backend deployment remain pending.
+
+[Publish demo pages](../.github/workflows/pages.yaml) runs on matching pushes to
+`main` or manual dispatch. It checks the two JavaScript behavior suites, runs
+`scripts/build_pages_site.py`, uploads `_site`, and deploys through the
+`github-pages` environment. The builder publishes only its explicit allowlist:
+the homepage, dashboard and legal HTML, their CSS, the dashboard/demo/library
+JavaScript, the official logo, and `.nojekyll`. It excludes the extension
+manifest/popup, backend, configuration, credentials, datasets and model artifacts.
+
 ## Privacy policy
 
-The popup and dashboard link to `privacy.html`. It describes the current local
+The popup and dashboard link to `privacy.html`. It describes the current static
 preview separately from the planned live service, including YouTube data use,
 AWS processing, cache sharing, retention and email deletion requests. The public
 privacy contact is `siddharthaganguli0093@gmail.com`, supplied by the developer.
@@ -51,11 +83,11 @@ Run that command from the repository root. The script declares its own document
 dependency; it does not add packages to the application's runtime requirements.
 Open `http://127.0.0.1:8765/privacy.html` to review the page locally.
 
-The PDF is prepared for the audit form's first evidence box. The policy page is
-not publicly hosted yet; it still needs a real HTTPS URL for the form. Hosting
-provider details and live consent/account controls must be finalized before the
-relevant features are launched. The demo homepage and branding are described
-below; the final browser-window evidence still needs its address bar.
+The PDF is prepared for the audit form's first evidence box. Use the published
+Privacy Policy URL above in the form's URL field. The policy identifies GitHub
+Pages and its hosting logs; live consent/account controls still need to be
+completed before live features launch. The demo homepage and branding are
+described below; final browser-window evidence still needs its address bar.
 
 ## Terms of Service
 
@@ -71,11 +103,11 @@ Upload `../output/pdf/comment-lens-terms-of-service.pdf` in the audit form's
 
 Run from the repository root. This uses the same document renderer as the
 privacy export. Both exports preserve active external YouTube/Google/contact
-links. Relative links to app pages are readable references in the PDF until
-real public HTTPS destinations are supplied.
+links and resolve relative app-page links to the published GitHub Pages URLs.
 
-Review locally at `http://127.0.0.1:8765/terms.html`. Terms and privacy pages
-still need public hosting; these PDF files are evidence documents, not URLs.
+Review locally at `http://127.0.0.1:8765/terms.html` or use the published Terms
+of Service URL above. The PDF files are upload evidence documents; use the
+published HTML URLs for the form's URL fields.
 
 ## Homepage and screenshot evidence
 
@@ -87,19 +119,20 @@ proportions and links to YouTube. Its provenance is in `assets/README.md`.
 The extension manifest's product name is now **Comment Lens**.
 
 Open `http://127.0.0.1:8765/index.html` with the preview server running.
-`../output/evidence/homepage-preview.jpg` is an actual page-content capture;
+`../output/evidence/homepage-preview.jpg` captures the published homepage content;
 it has no browser address bar and is a preview, not final audit evidence.
 
 For the **Homepage Screenshot** evidence box, capture the actual Chrome window
 including its address bar with Windows Snipping Tool (Win+Shift+S, Window mode).
 Keep the Privacy Policy link, YouTube branding and demo notice visible. Use
-PNG or JPEG, at least 1280x720 pixels, and a file below 10 MB. Use the real local
-URL when reviewing a local prototype; replace it with the real HTTPS URL after
-hosting. Do not draw a browser bar or invent a deployment address.
+PNG or JPEG, at least 1280x720 pixels, and a file below 10 MB. Open the published
+Homepage URL above so the real HTTPS address appears in the capture. Do not draw
+a browser bar.
 
 The form's screenshot quality requirements are documented in the
 [official audit form](https://support.google.com/youtube/contact/yt_api_form?hl=en).
-Public HTTPS hosting and the final window capture remain pending.
+Public HTTPS hosting is complete. The genuine Chrome window capture with its
+address bar remains a manual step; the page-content preview does not replace it.
 
 ## Where to make changes
 
