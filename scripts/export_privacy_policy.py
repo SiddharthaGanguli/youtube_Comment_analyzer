@@ -11,6 +11,7 @@ Document dependencies are separate from the model/serving environment.
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import urljoin
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
@@ -22,6 +23,7 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "extension" / "privacy.html"
 OUTPUT = ROOT / "output" / "pdf" / "comment-lens-privacy-policy.pdf"
+PUBLIC_SITE_URL = "https://siddharthaganguli.github.io/youtube_Comment_analyzer/"
 
 
 class PolicyParser(HTMLParser):
@@ -51,9 +53,10 @@ class PolicyParser(HTMLParser):
         elif self.tag and tag in {"strong", "em"}:
             self.parts.append("<b>" if tag == "strong" else "<i>")
         elif self.tag and tag == "a":
-            href = escape(attributes.get("href", ""), quote=True)
+            original_href = attributes.get("href", "")
+            href = escape(urljoin(PUBLIC_SITE_URL, original_href), quote=True)
             self.external_link = href.startswith(("https://", "mailto:"))
-            # Relative app links have no published HTTPS destination yet.
+            # Keep app navigation relative in HTML; PDFs link to the public site.
             self.parts.append(f'<a href="{href}" color="#5540c8"><u>' if self.external_link else "<u>")
         elif self.tag and tag == "br":
             self.parts.append("<br/>")

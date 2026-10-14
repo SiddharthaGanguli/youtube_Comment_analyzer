@@ -2,6 +2,7 @@
 logs/
 artifacts/
 tmp/pdfs/
+_site/
 .mlflow/
 mlruns/
 mlartifacts/
