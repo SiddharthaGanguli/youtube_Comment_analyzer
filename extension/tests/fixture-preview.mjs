@@ -3,7 +3,7 @@
 import {configureService} from "./dashboard-app.mjs";
 import {JobController} from "./job-controller.mjs";
 import {validateAnalysis, validateResult, validateModelDetails, resultToView} from "./result-model.mjs";
-import {FIXTURE_SCENARIOS, FIXTURE_VIDEO_URL, makeFixtureResult, makeFixtureAnalysis,
+import {FIXTURE_SCENARIOS, FIXTURE_VIDEO_INPUT_URL, makeFixtureResult, makeFixtureAnalysis,
   makeFixtureModelDetails} from "./fixture-data.mjs";
 
 if (!['127.0.0.1', 'localhost', '[::1]', '::1'].includes(location.hostname)
@@ -85,7 +85,7 @@ const controller = new JobController({api, auth});
 configureService(controller, resultToView);
 document.querySelector("#sign-in").textContent = "Use fixture account";
 document.querySelector("#use-service").textContent = "Open fixture workspace";
-document.querySelector("#video-url").value = FIXTURE_VIDEO_URL;
+document.querySelector("#video-url").value = FIXTURE_VIDEO_INPUT_URL;
 document.title = `FIXTURE TEST (${scenario}) | Comment Lens`;
 await controller.initialize();
 document.querySelector("#use-service").click();

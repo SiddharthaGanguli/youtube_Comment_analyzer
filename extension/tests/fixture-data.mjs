@@ -1,7 +1,9 @@
 // Synthetic test data for the developer preview, never packaged for users.
 // All factories return fresh JSON-compatible objects. `now` is epoch milliseconds.
-export const FIXTURE_VIDEO_ID = "dQw4w9WgXcQ";
+export const FIXTURE_VIDEO_ID = "BnMm_WGV9Rw";
 export const FIXTURE_VIDEO_URL = `https://www.youtube.com/watch?v=${FIXTURE_VIDEO_ID}`;
+// The user's watch-page link includes playlist/radio context. Only the video is submitted.
+export const FIXTURE_VIDEO_INPUT_URL = `${FIXTURE_VIDEO_URL}&list=RD${FIXTURE_VIDEO_ID}&start_radio=1`;
 export const FIXTURE_SCENARIOS = Object.freeze([
   "success", "partial", "empty", "all-skipped", "quota", "busy", "failed", "expired",
 ]);

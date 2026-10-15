@@ -5,7 +5,8 @@ import {JSDOM} from "jsdom";
 import {JobController} from "../job-controller.mjs";
 import {AnalysisClient} from "../analysis-client.mjs";
 import {resultToView} from "../result-model.mjs";
-import {makeFixtureResult, makeFixtureAnalysis, makeFixtureModelDetails, FIXTURE_VIDEO_URL} from "./fixture-data.mjs";
+import {makeFixtureResult, makeFixtureAnalysis, makeFixtureModelDetails, FIXTURE_VIDEO_URL,
+  FIXTURE_VIDEO_ID, FIXTURE_VIDEO_INPUT_URL} from "./fixture-data.mjs";
 
 const markup = await readFile(new URL("../dashboard.html", import.meta.url), "utf8");
 let instance = 0;
@@ -68,8 +69,8 @@ async function setup(t, {scenario = "success", error = null, useTransport = fals
     $("#sign-in").click();
     await until(() => controller.state.signedIn && controller.state.phase === "ready");
   }
-  async function submit() {
-    $("#video-url").value = FIXTURE_VIDEO_URL;
+  async function submit(videoUrl = FIXTURE_VIDEO_URL) {
+    $("#video-url").value = videoUrl;
     $("#video-form").dispatchEvent(new window.Event("submit", {bubbles: true, cancelable: true}));
     await until(() => !controller.state.busy && calls.submit > 0);
   }
@@ -120,12 +121,17 @@ test("Connected results render one verified sample; filters and details make no 
   assert.equal(f.$("#mode-badge").textContent, "Demo data");
 });
 
-test("The real API client, controller and dashboard consume one hashed result through injected HTTP", async t => {
-  const f = await setup(t, {useTransport: true}); await f.signIn(); await f.submit();
+test("The supplied playlist/radio link reaches the API as one video and renders its verified fixture result", async t => {
+  const f = await setup(t, {useTransport: true}); await f.signIn(); await f.submit(FIXTURE_VIDEO_INPUT_URL);
   await until(() => Boolean(f.controller.state.modelDetails));
   assert.equal(f.controller.state.phase, "complete");
   assert.equal(f.calls.submit, 1); assert.equal(f.calls.download, 1);
   assert.equal(f.requests.length, 4);
+  assert.equal(f.controller.state.analysis.video_id, FIXTURE_VIDEO_ID);
+  assert.equal(f.controller.state.result.video.id, FIXTURE_VIDEO_ID);
+  assert.equal(f.$("#video-url").value, FIXTURE_VIDEO_URL);
+  const submission = f.requests.find(request => request.options.method === "POST");
+  assert.deepEqual(JSON.parse(submission.options.body), {video_url: FIXTURE_VIDEO_URL, max_comments: 1000});
   const blobCreate = URL.createObjectURL, blobRevoke = URL.revokeObjectURL;
   const downloads = [];
   URL.createObjectURL = blob => {downloads.push(blob); return "blob:fixture-result";};
