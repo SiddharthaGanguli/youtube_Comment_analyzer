@@ -1347,7 +1347,24 @@ It does not require a CDK bootstrap stack or SSM bootstrap parameter. Failed
 creates preserve completed resources. After fixing an external permission
 failure, rerunning the same release resumes its previous template and
 parameters instead of deleting the named table, bucket or queues. A failed
-stack cannot publish website settings or a current-model pointer.
+stack cannot publish website settings or a current-model pointer. If the
+failure requires an infrastructure fix, synthesize the corrected template and
+add `--update-failed-template` to the deploy command. That explicit recovery
+uses the new template while preserving every previous parameter, including
+the model release, ZIP keys and approval reference. Permission-only retries
+continue to use the previous template. AWS can recreate failed resources that
+never reached a stable state.
+
+Some new AWS accounts cannot allocate Lambda reservations while retaining the
+account's required unreserved pool. For a development prototype, synthesize
+with `--shared-development-concurrency`. This omits physical reservations for
+all five functions and limits the SQS worker mapping to two concurrent
+analyses. Existing runtime concurrency values describe requested sizing
+budgets in this mode; they do not mean that AWS has reserved that capacity.
+The stack exposes `ConcurrencyMode` so the allocation is explicit. Functions
+share account capacity and may throttle each other. This option is rejected
+outside development, leaves the production reservation design intact, and
+does not establish capacity for 1,000 active users.
 
 After CloudFormation succeeds, the script invokes the verifier Lambda on Linux
 before registering and promoting the release. That check compares the exact

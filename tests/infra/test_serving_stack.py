@@ -86,6 +86,7 @@ class ServingStackTests(unittest.TestCase):
         self.assertNotIn("ApiFunctionName", self.template["Parameters"], "The full stack owns its API function")
         self.assertNotIn("BootstrapVersion", self.template["Parameters"], "Direct S3 deployment does not require CDK bootstrap")
         self.assertNotIn("CheckBootstrapVersion", self.template.get("Rules", {}))
+        self.assertIn("Route0", self.resources["DefaultStage"]["DependsOn"], "The submission route must exist before its stage settings")
 
     def test_web_callbacks_and_cors_match_exact_registered_pages(self):
         client = self.resources_of("AWS::Cognito::UserPoolClient")[0]["Properties"]
@@ -135,6 +136,8 @@ class ServingStackTests(unittest.TestCase):
                 self.assertIn(name, encoded)
             self.assertIn('\\"live_enabled\\":false', encoded)
         self.assertEqual(self.resources["ApiFunction"]["Properties"]["ReservedConcurrentExecutions"], 10)
+        self.assertEqual(self.template["Outputs"]["ConcurrencyMode"]["Value"], "reserved")
+        self.assertEqual({resource["Properties"]["ReservedConcurrentExecutions"] for resource in functions}, {1, 2, 10})
         self.assertIn("SERVING_QUEUE_REGISTRY_JSON", self.resources["DispatcherFunction"]["Properties"]["Environment"]["Variables"])
         self.assertIn("SERVING_IMAGE_CODE_REVISION", self.resources["WorkerFunction"]["Properties"]["Environment"]["Variables"])
 
@@ -212,3 +215,37 @@ class ServingStackTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     ServingStack(app, f"BadCallback{index}", auth=self.auth, settings=self.settings,
                                  web_callback_url=url, env=Environment(region=self.settings.region))
+
+    def test_explicit_shared_development_pool_has_no_physical_reservations_and_caps_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = App(outdir=directory)
+            stack = ServingStack(app, "CommentLensSharedTest", auth=self.auth, settings=self.settings,
+                shared_development_concurrency=True, env=Environment(region=self.settings.region))
+            template = Template.from_stack(stack).to_json()
+        resources = template["Resources"]
+        functions = [resource["Properties"] for resource in resources.values() if resource["Type"] == "AWS::Lambda::Function"]
+        self.assertEqual(len(functions), 5)
+        for function in functions:
+            self.assertNotIn("ReservedConcurrentExecutions", function)
+            raw = function["Environment"]["Variables"]["SERVING_RUNTIME_OVERRIDES_JSON"]
+            literals = "".join(value for value in raw["Fn::Join"][1] if isinstance(value, str))
+            self.assertIn('"reserved_concurrency":10', literals)
+            self.assertIn('"worker":{"reserved_concurrency":2,"sum_of_release_mapping_maximum_concurrency":2}', literals)
+            self.assertIn('"live_enabled":false', literals)
+        self.assertEqual(resources["ReleaseQueueMapping"]["Properties"]["ScalingConfig"]["MaximumConcurrency"], 2)
+        self.assertEqual(template["Outputs"]["ConcurrencyMode"]["Value"], "shared-development")
+        self.assertEqual(template["Outputs"]["WorkerConcurrencyBudget"]["Value"], "2")
+        self.assertEqual(template["Outputs"]["WorkerMaximumConcurrency"]["Value"], "2")
+        self.assertEqual(template["Metadata"]["CommentLensConcurrencyMode"], "shared-development")
+        self.assertIn("not allocated Lambda reservations", template["Metadata"]["CommentLensConcurrencyNote"])
+        self.assertIn("Route0", resources["DefaultStage"]["DependsOn"])
+
+    def test_shared_concurrency_cannot_weaken_production_reservations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = App(outdir=directory)
+            # The mode restriction runs before any stack resources are created.
+            with self.assertRaisesRegex(ValueError, "only for explicit development"):
+                ServingStack(app, "ProductionSharedRejected",
+                    auth=self.auth.model_copy(update={"environment": "production"}),
+                    settings=self.settings.model_copy(update={"environment": "production"}),
+                    shared_development_concurrency=True, env=Environment(region=self.settings.region))

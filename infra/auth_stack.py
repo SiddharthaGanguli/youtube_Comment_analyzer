@@ -116,8 +116,9 @@ class AuthStack(Stack):
         integration = gateway.CfnIntegration(self, "ApiIntegration", api_id=api.ref, integration_type="AWS_PROXY",
             integration_uri=function_arn, integration_method="POST", payload_format_version="2.0",
             timeout_in_millis=api_limits.timeout_seconds * 1000)
+        configured_routes = {}
         for index, (route, required_scope) in enumerate(ROUTES.items()):
-            gateway.CfnRoute(self, f"Route{index}", api_id=api.ref, route_key=route,
+            configured_routes[route] = gateway.CfnRoute(self, f"Route{index}", api_id=api.ref, route_key=route,
                 target=Fn.join("/", ["integrations", integration.ref]), authorization_type="JWT" if required_scope else "NONE",
                 authorizer_id=authorizer.ref if required_scope else None,
                 authorization_scopes=[required_scope] if required_scope else None)
@@ -133,13 +134,16 @@ class AuthStack(Stack):
         access_format = json.dumps({"request_id": "$context.requestId", "route": "$context.routeKey",
                                     "status": "$context.status", "response_bytes": "$context.responseLength",
                                     "integration_latency_ms": "$context.integrationLatency"}, separators=(",", ":"))
-        gateway.CfnStage(self, "DefaultStage", api_id=api.ref, stage_name="$default", auto_deploy=True,
+        stage = gateway.CfnStage(self, "DefaultStage", api_id=api.ref, stage_name="$default", auto_deploy=True,
             access_log_settings=gateway.CfnStage.AccessLogSettingsProperty(destination_arn=access_log.attr_arn, format=access_format),
             default_route_settings=gateway.CfnStage.RouteSettingsProperty(detailed_metrics_enabled=True,
                 throttling_rate_limit=api_limits.throttle_requests_per_second, throttling_burst_limit=api_limits.throttle_burst),
             route_settings={"POST /v1/analyses": {"DetailedMetricsEnabled": True,
                 "ThrottlingRateLimit": api_limits.submission_requests_per_second,
                 "ThrottlingBurstLimit": api_limits.submission_burst}})
+        # RouteSettings contains a string key, so CloudFormation cannot infer
+        # that this route must exist before it creates the stage.
+        stage.add_resource_dependency(configured_routes["POST /v1/analyses"])
         for name, metric, service, threshold in (
                 ("DependencyFailures", "DependencyFailureCount", "api", 5),
                 ("QuotaDenied", "QuotaDeniedCount", "jobs", 1),

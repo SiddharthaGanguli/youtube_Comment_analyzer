@@ -22,12 +22,21 @@ DEVELOPMENT_CALLBACK_URLS = (
 
 
 class ServingStack(AuthStack):
-    """Own the table, private result bucket, delivery pipeline and JWT API."""
+    """Own the table, private result bucket, delivery pipeline and JWT API.
+
+    Shared development mode uses the account's unreserved Lambda pool. In that
+    explicit prototype mode, the existing runtime ``reserved_concurrency``
+    fields describe requested sizing budgets, not allocated AWS reservations.
+    It provides no reserved capacity or isolation between the functions.
+    """
 
     def __init__(self, scope, id, *, auth, settings, live_youtube=False,
-                 web_callback_url=WEB_CALLBACK_URL, extension_id=None, **kwargs):
+                 web_callback_url=WEB_CALLBACK_URL, extension_id=None,
+                 shared_development_concurrency=False, **kwargs):
         if auth.environment != settings.environment or auth.region != settings.region:
             raise ValueError("Serving and authorization environments/regions must match")
+        if shared_development_concurrency and settings.environment != "development":
+            raise ValueError("Shared Lambda concurrency is available only for explicit development prototypes")
         if live_youtube and not (settings.youtube.api_key_secret_arn and settings.youtube.project_quota_verified):
             raise ValueError("Live deployment requires a secret reference and verified quota")
         # The deploy script supplies S3 code/template locations directly. There
@@ -37,8 +46,15 @@ class ServingStack(AuthStack):
                          observability=settings.observability, defer_authorization=True, **kwargs)
         if len(self.stack_name) > 44:
             raise ValueError("Use a stack name of at most 44 characters for Lambda and role names")
-        self.template_options.metadata = {"CommentLensReleaseWorkflow": "first-development-release"
-            if settings.environment == "development" else "production-release-requires-reviewed-rollout"}
+        concurrency_mode = "shared-development" if shared_development_concurrency else "reserved"
+        metadata = {"CommentLensReleaseWorkflow": "first-development-release"
+            if settings.environment == "development" else "production-release-requires-reviewed-rollout",
+            "CommentLensConcurrencyMode": concurrency_mode}
+        if shared_development_concurrency:
+            metadata["CommentLensConcurrencyNote"] = (
+                "Development prototype: runtime reserved_concurrency numbers are requested sizing budgets, "
+                "not allocated Lambda reservations. All functions share the account pool without capacity isolation.")
+        self.template_options.metadata = metadata
         self.settings = settings
         artifacts = CfnParameter(self, "RuntimeArtifactsBucket", type="String",
             allowed_pattern=r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$",
@@ -108,18 +124,20 @@ class ServingStack(AuthStack):
         queue.apply_removal_policy(RemovalPolicy.RETAIN)
 
         api_concurrency = min(settings.api.reserved_concurrency, 10) if settings.environment == "development" else settings.api.reserved_concurrency
+        worker_concurrency = 2 if shared_development_concurrency else settings.worker.reserved_concurrency
+        mapping_concurrency = 2 if shared_development_concurrency else settings.worker.sum_of_release_mapping_maximum_concurrency
         api, api_role = self._function("Api", "api", "src.Sentiment_analysis.api.lambda_handler.handler",
             artifacts.value_as_string, api_key.value_as_string, settings.api.memory_mib,
-            settings.api.timeout_seconds, api_concurrency)
+            settings.api.timeout_seconds, None if shared_development_concurrency else api_concurrency)
         worker, worker_role = self._function("Worker", "worker", "src.Sentiment_analysis.workers.analyze.handler",
             artifacts.value_as_string, worker_key.value_as_string, settings.worker.memory_mib,
-            settings.worker.timeout_seconds, settings.worker.reserved_concurrency)
+            settings.worker.timeout_seconds, None if shared_development_concurrency else worker_concurrency)
         dispatcher, dispatcher_role = self._function("Dispatcher", "dispatcher", "src.Sentiment_analysis.workers.dispatch.handler",
-            artifacts.value_as_string, api_key.value_as_string, 256, 30, 2)
+            artifacts.value_as_string, api_key.value_as_string, 256, 30, None if shared_development_concurrency else 2)
         reconciler, reconciler_role = self._function("Reconciler", "reconciler", "src.Sentiment_analysis.workers.reconcile.handler",
-            artifacts.value_as_string, api_key.value_as_string, 256, 60, 1)
+            artifacts.value_as_string, api_key.value_as_string, 256, 60, None if shared_development_concurrency else 1)
         verifier, _ = self._function("Verifier", "verify-release", "src.Sentiment_analysis.workers.verify_release.handler",
-            artifacts.value_as_string, worker_key.value_as_string, settings.worker.memory_mib, 60, 1)
+            artifacts.value_as_string, worker_key.value_as_string, settings.worker.memory_mib, 60, None if shared_development_concurrency else 1)
 
         callbacks = [web_callback_url]
         if settings.environment == "development":
@@ -137,6 +155,8 @@ class ServingStack(AuthStack):
             "auth": {"cognito_issuer": connection["issuer"], "public_client_id": connection["client"].ref,
                      "extension_id": extension_id},
             "api": {"allowed_origins": connection["origins"], "reserved_concurrency": api_concurrency},
+            "worker": {"reserved_concurrency": worker_concurrency,
+                       "sum_of_release_mapping_maximum_concurrency": mapping_concurrency},
             "youtube": {"live_enabled": live_youtube, "analytics_use_approved": live_youtube,
                         "approval_reference": approval.value_as_string if live_youtube else None}}
         runtime = {"SERVING_CONFIG_PATH": "config/serving.yaml", "SERVING_RUNTIME_OVERRIDES_JSON": self.to_json_string(overrides)}
@@ -196,7 +216,7 @@ class ServingStack(AuthStack):
             maximum_batching_window_in_seconds=settings.queue.event_batch_window_seconds,
             function_response_types=["ReportBatchItemFailures"], enabled=live_youtube,
             scaling_config=lambda_.CfnEventSourceMapping.ScalingConfigProperty(
-                maximum_concurrency=settings.worker.sum_of_release_mapping_maximum_concurrency))
+                maximum_concurrency=mapping_concurrency))
         rule = events.CfnRule(self, "MaintenanceSchedule", schedule_expression=f"rate({settings.queue.reconciler_interval_seconds // 60} minute{'' if settings.queue.reconciler_interval_seconds == 60 else 's'})",
             state="ENABLED", targets=[events.CfnRule.TargetProperty(arn=reconciler.attr_arn, id="Reconcile",
                 retry_policy=events.CfnRule.RetryPolicyProperty(maximum_retry_attempts=2, maximum_event_age_in_seconds=120))])
@@ -223,7 +243,9 @@ class ServingStack(AuthStack):
                 "QueueUrl": queue.ref, "ApiFunctionName": api.ref, "WorkerFunctionName": worker.ref,
                 "VerifierFunctionName": verifier.ref,
                 "ServingReleaseId": release.value_as_string, "LiveYouTubeEnabled": str(live_youtube).lower(),
-                "AcceptedApprovalReference": approval.value_as_string}.items():
+                "AcceptedApprovalReference": approval.value_as_string, "ConcurrencyMode": concurrency_mode,
+                "ApiConcurrencyBudget": str(api_concurrency), "WorkerConcurrencyBudget": str(worker_concurrency),
+                "WorkerMaximumConcurrency": str(mapping_concurrency)}.items():
             CfnOutput(self, name, value=value)
         if settings.environment == "development":
             CfnOutput(self, "LocalCallbackUrl", value=DEVELOPMENT_CALLBACK_URLS[0])

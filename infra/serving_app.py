@@ -19,17 +19,22 @@ def main():
     parser.add_argument("--extension-id", default=None, help="Optional real Chrome extension ID")
     parser.add_argument("--enable-live-youtube", action="store_true",
                         help="Require the accepted approval reference at deployment; never substitutes for approval")
+    parser.add_argument("--shared-development-concurrency", action="store_true",
+                        help="Development prototype only: share account Lambda concurrency and cap the SQS worker at two")
     args = parser.parse_args()
     settings = ServingConfigurationManager(args.config).get_serving_config()
     auth = AuthConfigurationManager(args.auth_config).get_auth_config()
     app = App(outdir=args.outdir, context={"@aws-cdk/core:validateAgainstDefaultRules": True})
     ServingStack(app, args.stack_name or f"CommentLensServing-{settings.environment}", auth=auth, settings=settings,
         live_youtube=args.enable_live_youtube, web_callback_url=args.web_callback_url, extension_id=args.extension_id,
+        shared_development_concurrency=args.shared_development_concurrency,
         env=Environment(region=settings.region))
     assembly = app.synth()
     print(f"Serving template synthesized in {assembly.directory}; no AWS resources created.")
     print("Upload verified Linux runtime ZIPs and supply their bucket/keys, code revision and model release at deployment.")
     print(f"Live YouTube mapping: {'enabled only with accepted approval reference' if args.enable_live_youtube else 'disabled'}.")
+    if args.shared_development_concurrency:
+        print("Development prototype uses shared Lambda concurrency; worker mapping maximum is two. Runtime concurrency budgets do not allocate reserved capacity.")
 
 
 if __name__ == "__main__":

@@ -110,6 +110,43 @@ class ServingReleaseTests(unittest.TestCase):
         self.assertTrue(all(item["UsePreviousValue"] for item in sent["Parameters"]))
         cfn.create_stack.assert_not_called()
 
+    def test_explicit_template_recovery_keeps_the_release_and_approval_parameters(self):
+        release = "sr_" + "a" * 64
+        prefix = f"serving-deployments/development/{release}"
+        manifest = {"release_id": release, "code_revision": "c" * 40,
+                    "packages": {name: {"sha256": "b" * 64} for name in ("api", "worker")}}
+        parameters = [{"ParameterKey": key, "ParameterValue": value} for key, value in {
+            "ModelReleaseId": release, "CodeRevision": manifest["code_revision"],
+            "RuntimeArtifactsBucket": "yt-comment-analyzer-main", "AnalyticsUseApprovalReference": "",
+            **{name.title() + "CodeKey": f"{prefix}/{name}-{'b' * 64}.zip" for name in ("api", "worker")}}.items()]
+        cfn, s3 = Mock(), Mock()
+        cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "UPDATE_FAILED", "Parameters": parameters}]}
+        cfn.get_waiter.return_value.wait.side_effect = RuntimeError("stop after template recovery request")
+        s3.get_public_access_block.return_value = {"PublicAccessBlockConfiguration": dict.fromkeys(
+            ("BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets"), True)}
+        session = Mock(); session.client.side_effect = lambda name: {"cloudformation": cfn, "s3": s3}[name]
+        with tempfile.TemporaryDirectory() as directory:
+            template = Path(directory) / "template.json"
+            document = {"Metadata": {"CommentLensReleaseWorkflow": "first-development-release"},
+                        "Parameters": {row["ParameterKey"]: {"Type": "String"} for row in parameters}}
+            template.write_text(json.dumps(document), encoding="utf-8")
+            with patch("scripts.deploy_serving.checked_release", return_value=(manifest, None, None)):
+                with self.assertRaisesRegex(RuntimeError, "template recovery request"):
+                    deploy_release(session, directory, template, update_failed_template=True)
+                sent = cfn.update_stack.call_args.kwargs
+                self.assertIn("TemplateURL", sent)
+                self.assertNotIn("UsePreviousTemplate", sent)
+                self.assertTrue(sent["DisableRollback"])
+                self.assertEqual(sent["Parameters"], [
+                    {"ParameterKey": row["ParameterKey"], "UsePreviousValue": True} for row in parameters])
+                document["Parameters"]["UnexpectedParameter"] = {"Type": "String"}
+                template.write_text(json.dumps(document), encoding="utf-8")
+                cfn.update_stack.reset_mock(); s3.upload_file.reset_mock()
+                with self.assertRaisesRegex(ValueError, "parameter names"):
+                    deploy_release(session, directory, template, update_failed_template=True)
+                cfn.update_stack.assert_not_called(); s3.upload_file.assert_not_called()
+        cfn.create_stack.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

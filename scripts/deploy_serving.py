@@ -65,7 +65,7 @@ def web_settings(outputs, redirect_uri):
             "resultBaseUrl": outputs["ResultBaseUrl"], "pollScheduleSeconds": [2, 5, 10], "maxComments": 1000}
 
 
-def deploy_release(session, directory, template_path, *, approval_reference=""):
+def deploy_release(session, directory, template_path, *, approval_reference="", update_failed_template=False):
     from botocore.exceptions import ClientError
     from src.Sentiment_analysis.repositories.dynamo import DynamoStore
     from src.Sentiment_analysis.repositories.models import ModelRepository
@@ -93,6 +93,14 @@ def deploy_release(session, directory, template_path, *, approval_reference=""):
             raise ValueError("An existing different release needs drain/promotion; refusing to replace active workers")
         if parameters.get("ApiCodeKey") != code_keys["api"] or parameters.get("WorkerCodeKey") != code_keys["worker"]:
             raise ValueError("This release already has different immutable packages; reuse its original ZIPs")
+        for key, expected in (("RuntimeArtifactsBucket", ARTIFACT_BUCKET), ("CodeRevision", manifest["code_revision"])):
+            if key in parameters and parameters[key] != expected:
+                raise ValueError("Existing release parameters differ from its immutable package binding")
+    if update_failed_template:
+        if not existing or existing["StackStatus"] not in {"CREATE_FAILED", "UPDATE_FAILED"}:
+            raise ValueError("Template recovery requires a failed serving stack")
+        if set(template.get("Parameters", {})) != set(parameters):
+            raise ValueError("Template recovery must preserve all existing parameter names and values")
     block = s3.get_public_access_block(Bucket=ARTIFACT_BUCKET)["PublicAccessBlockConfiguration"]
     if not all(block.get(field) is True for field in ("BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets")):
         raise ValueError("Deployment packages require a bucket with public access blocked")
@@ -119,8 +127,9 @@ def deploy_release(session, directory, template_path, *, approval_reference=""):
         if recovering:
             # Preserve the successfully created named resources, then retry the
             # failed resources after their external permission issue is fixed.
-            request.pop("TemplateURL")
-            request["UsePreviousTemplate"] = True
+            if not update_failed_template:
+                request.pop("TemplateURL")
+                request["UsePreviousTemplate"] = True
             request["Parameters"] = [{"ParameterKey": row["ParameterKey"], "UsePreviousValue": True}
                                      for row in existing["Parameters"]]
         try:
@@ -167,6 +176,8 @@ def main():
     parser.add_argument("--template", type=Path, required=True)
     parser.add_argument("--profile", help="Existing local AWS profile; otherwise use the default role/profile chain")
     parser.add_argument("--approval-reference", default="")
+    parser.add_argument("--update-failed-template", action="store_true",
+                        help="Recover a failed stack using the corrected template and its existing release parameters")
     parser.add_argument("--deploy", action="store_true", help="Create/update the named development stack in AWS")
     args = parser.parse_args()
     manifest, _, _ = checked_release(args.release)
@@ -175,7 +186,7 @@ def main():
         return
     import boto3
     deploy_release(boto3.Session(profile_name=args.profile, region_name="us-east-1"), args.release, args.template,
-                   approval_reference=args.approval_reference)
+                   approval_reference=args.approval_reference, update_failed_template=args.update_failed_template)
 
 
 if __name__ == "__main__":
