@@ -5,7 +5,10 @@ const TERMINAL = new Set(["SUCCEEDED", "PARTIAL", "FAILED"]);
 export class JobController {
   #sessionToken = null;
   constructor({api, auth, onChange = () => {}, pollScheduleSeconds = [2, 5, 10], maxComments = 1000,
-    now = Date.now, random = Math.random, setTimer = setTimeout, clearTimer = clearTimeout,
+    now = Date.now, random = Math.random,
+    // Window timers require their browser receiver, even when called through this controller.
+    setTimer = (callback, delay) => globalThis.setTimeout(callback, delay),
+    clearTimer = handle => globalThis.clearTimeout(handle),
     isHidden = () => globalThis.document?.hidden ?? false, uuid = () => crypto.randomUUID()}) {
     Object.assign(this, {api, auth, onChange, pollScheduleSeconds, maxComments, now, random, setTimer, clearTimer, isHidden, uuid});
     this.state = {phase: "signed-out", signedIn: false, busy: false, analysis: null, result: null, error: null, modelDetails: null};

@@ -74,6 +74,24 @@ async function until(predicate) {
   throw new Error("Fixture operation did not reach expected point");
 }
 
+test("Default global fetch keeps its global receiver for the token exchange", async t => {
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async function (url, options) {
+    // A strict receiver simulation verifies the default wrapper independently
+    // of the injected transports used by the other offline tests.
+    assert.equal(this, globalThis);
+    assert.equal(url, `${config.cognitoDomain}/oauth2/token`);
+    assert.equal(options.method, "POST");
+    calls++;
+    return tokenResponse();
+  });
+  const auth = new AuthSession({config, chromeApi: chromeFixture(), now: () => NOW});
+  t.after(() => auth.dispose());
+  assert.equal(await auth.signIn(), true);
+  assert.equal(await auth.getAccessToken(), jwt());
+  assert.equal(calls, 1);
+});
+
 test("Initialization restricts session storage before reading and never opens sign-in", async () => {
   const {auth, chrome} = setup();
   assert.equal(await auth.initialize(), false);

@@ -75,9 +75,10 @@ def build_fixture_preview(source=SOURCE, output=OUTPUT):
         staged = build_extension_bundle(source=source, output=Path(directory) / "bundle")
         html = (staged / "dashboard.html").read_text(encoding="utf-8")
         original = '<script type="module" src="dashboard.mjs"></script>'
-        if html.count(original) != 1 or html.count("<body>") != 1:
+        if html.count(original) != 1 or html.count("<body>") != 1 or html.count("<head>") != 1:
             raise ValueError("The dashboard entry point could not be replaced safely")
         html = html.replace(original, '<script type="module" src="fixture-preview.mjs"></script>')
+        html = html.replace("<head>", '<head>\n  <link rel="icon" href="data:,">', 1)
         html = html.replace("<body>", "<body>\n" + WARNING, 1)
 
         output.mkdir(parents=True, exist_ok=True)

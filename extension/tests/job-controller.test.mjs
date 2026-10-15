@@ -44,6 +44,61 @@ function harness() {
   };
 }
 
+test("Default browser timers retain their Window receiver through sign-in, scheduling and cancellation", async () => {
+  const nativeSet = globalThis.setTimeout, nativeClear = globalThis.clearTimeout;
+  const timers = new Map(), delays = [], cleared = [];
+  let next = 0, controller;
+  globalThis.setTimeout = function (callback, milliseconds) {
+    if (this !== globalThis) throw new TypeError("Illegal invocation");
+    const id = ++next; delays.push(milliseconds); timers.set(id, callback); return id;
+  };
+  globalThis.clearTimeout = function (id) {
+    if (this !== globalThis) throw new TypeError("Illegal invocation");
+    cleared.push(id); timers.delete(id);
+  };
+  try {
+    const auth = {signedIn: false, async initialize() {}, async signIn() { this.signedIn = true; },
+      async getAccessToken() { return "synthetic-test-session"; }, dispose() {}};
+    controller = new JobController({auth, api: {submit: async () => analysis()}, now: () => NOW,
+      random: () => .5, isHidden: () => false});
+    await controller.initialize(); assert.equal(controller.state.phase, "signed-out");
+    await controller.signIn(); assert.equal(controller.state.phase, "ready");
+    await controller.submit(VIDEO); assert.equal(controller.state.phase, "QUEUED");
+    assert.deepEqual(delays, [3_600_000, 2000]);
+    assert.equal(timers.size, 2);
+    controller.pause(); assert.equal(controller.state.phase, "paused");
+    assert.equal(timers.size, 1); // Retention expiry remains armed while paused.
+    controller.dispose(); assert.equal(timers.size, 0);
+    assert.ok(cleared.some(id => id !== undefined));
+  } finally {
+    // A broken cancel() must not mask the original failure or leave globals
+    // replaced for the other test cases.
+    try { if (controller && !controller.disposed) controller.dispose(); } catch { /* Failing implementation under test. */ }
+    globalThis.setTimeout = nativeSet; globalThis.clearTimeout = nativeClear;
+  }
+});
+
+test("Explicit timer dependencies schedule and cancel without touching browser timer globals", async () => {
+  const nativeSet = globalThis.setTimeout, nativeClear = globalThis.clearTimeout;
+  const timers = new Map(), cleared = []; let next = 0, controller;
+  globalThis.setTimeout = () => { throw new Error("Unexpected global timer scheduling"); };
+  globalThis.clearTimeout = () => { throw new Error("Unexpected global timer cancellation"); };
+  try {
+    const auth = {signedIn: true, async initialize() {}, async getAccessToken() { return "synthetic-test-session"; }, dispose() {}};
+    controller = new JobController({auth, api: {submit: async () => analysis()}, now: () => NOW,
+      random: () => .5, isHidden: () => false,
+      setTimer: function (callback, milliseconds) { const id = ++next; timers.set(id, {callback, milliseconds}); return id; },
+      clearTimer: function (id) { cleared.push(id); timers.delete(id); }});
+    await controller.initialize(); await controller.submit(VIDEO);
+    assert.deepEqual([...timers.values()].map(value => value.milliseconds), [3_600_000, 2000]);
+    controller.dispose(); assert.equal(timers.size, 0);
+    assert.ok(cleared.includes(1)); assert.ok(cleared.includes(2));
+  } finally {
+    try { if (controller && !controller.disposed) controller.dispose(); } catch { /* Failing implementation under test. */ }
+    globalThis.setTimeout = nativeSet; globalThis.clearTimeout = nativeClear;
+  }
+});
+
 test("Initialization restores a trusted session; invalid and signed-out submissions make no requests", async () => {
   const h = harness(); await h.controller.initialize();
   assert.equal(h.controller.state.phase, "ready");

@@ -76,7 +76,7 @@ export class AuthSession {
   #signing = null; #active = null; #pending = null; #generation = 0; #disposed = false; #signedOut = false;
   #listener;
 
-  constructor({config, chromeApi = globalThis.chrome, fetchImpl = globalThis.fetch, now = Date.now}) {
+  constructor({config, chromeApi = globalThis.chrome, fetchImpl = globalThis.fetch?.bind(globalThis), now = Date.now}) {
     if (!config || config.enabled !== true || !/^[a-p]{32}$/.test(config.extensionId)
         || !/^[a-z0-9]{1,128}$/.test(config.clientId) || typeof fetchImpl !== "function" || typeof now !== "function") throw failure("AUTH_UNAVAILABLE");
     this.#config = {...config};

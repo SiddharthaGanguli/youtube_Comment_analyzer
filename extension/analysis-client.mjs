@@ -88,7 +88,7 @@ function apiFailure(response) {
 }
 
 export class AnalysisClient {
-  constructor({config, auth, fetchImpl = globalThis.fetch, now = Date.now}) {
+  constructor({config, auth, fetchImpl = globalThis.fetch?.bind(globalThis), now = Date.now}) {
     this.config = validateClientConfig(config);
     if (!this.config.enabled) throw new ApiError("CONFIGURATION_REQUIRED");
     if (!auth || typeof auth.getAccessToken !== "function" || typeof fetchImpl !== "function" || typeof now !== "function") {

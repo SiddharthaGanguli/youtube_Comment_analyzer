@@ -1227,6 +1227,14 @@ not prove native Chrome behavior, production access control or capacity.
 
 ### What still needs a real environment
 
+On 2026-10-15, the fixture flow was checked in the IDE's integrated browser:
+fixture sign-in, queued polling and result display completed for the selected
+video, with two analyzed comments and one skipped row. This check exposed a
+browser timer binding bug that Node's own timers had not caught. The controller
+now calls default timers through `globalThis`; regression checks enforce the
+browser receiver and preserve injected test timers. This is a fixture check,
+with no real account authentication or YouTube requests.
+
 The current native Chrome verification was blocked by the browser control's
 URL safety check. No new native Chrome visual, identity or real Cognito check
 is claimed for this stage. Repeat desktop/mobile layout, keyboard/focus,

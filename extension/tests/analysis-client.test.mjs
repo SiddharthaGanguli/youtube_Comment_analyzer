@@ -45,6 +45,22 @@ async function objectFixture(data = result()) {
     expires_at: "2026-10-15T10:05:00Z", sha256, bytes: bytes.byteLength, content_type: "application/json", schema_version: 1}};
 }
 
+test("Default global fetch keeps its global receiver for API requests", async t => {
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async function (url, options) {
+    // This models a receiver-sensitive host function; it is not a claim about
+    // a native Chrome fetch failure.
+    assert.equal(this, globalThis);
+    assert.equal(url, CONFIG.apiBaseUrl + `/v1/analyses/${ID}`);
+    assert.equal(options.headers.Authorization, `Bearer ${TOKEN}`);
+    calls++;
+    return reply(status());
+  });
+  const client = new AnalysisClient({config: CONFIG, auth: {getAccessToken: async () => TOKEN}, now: () => Date.parse(TIME)});
+  assert.deepEqual(await client.status(ID), status());
+  assert.equal(calls, 1);
+});
+
 test("Submissions canonicalize the URL and send one retry key without automatic POST retries", async () => {
   const {client, calls} = setup([reply(status("QUEUED"), 202)]);
   const accepted = await client.submit("https://youtu.be/dQw4w9WgXcQ?t=3", RETRY);
