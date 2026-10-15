@@ -4,7 +4,9 @@ The [system design](system-design.md) sets the launch target and its limits.
 This checklist turns that design into small reviewable steps. Steps 1 through 5 are
 implemented and checked with offline fixtures. Step 6's adapter and worker
 integration are implemented and project quota is recorded; approval evidence and its live sample remain
-pending, along with extension connection and deployment. Finish and verify each step, then commit and push it before
+pending. Step 7's extension connection is implemented and checked with offline
+fixtures; native Chrome, deployed sign-in and live end-to-end checks remain
+pending, along with deployment. Finish and verify each step, then commit and push it before
 starting the next, following the
 project's existing workflow.
 
@@ -128,17 +130,37 @@ with fixtures while the external approval is pending. The
 explains Secrets Manager wiring, durable retry delays, public checks on resume,
 the shared project circuit and the remaining live-test prerequisites.
 
+The developer reported audit submission on 2026-10-15. No accepted analytics-use
+decision or case reference has been provided. Submission leaves
+`analytics_use_approved: false`, `approval_reference: null`, and
+`live_enabled: false` in the serving configuration.
+
 ## 7. Extension connection
 
-- [ ] Add user-initiated sign-in, state/PKCE validation, restricted session token
-  storage and exact required host permissions.
-- [ ] Connect submissions, progress polling, download renewal and owned deletion.
-- [ ] Add queued/running/partial/empty/skipped/quota/busy/error/expired states.
-- [ ] Keep demo mode labeled and available. Feed live charts/table/exports from
+- [x] Add user-initiated sign-in, state/PKCE validation, restricted access-token
+  session storage and generated exact host permissions. Require policy/terms
+  consent before sign-in or submission.
+- [x] Connect submissions, progress polling, download renewal and owned deletion
+  through the API client/controller, checked with offline responses.
+- [x] Add queued/running/partial/empty/skipped/quota/busy/error/expired states.
+- [x] Keep demo mode labeled and available. Feed connected charts/table/exports from
   one downloaded result; do not fetch on each filter change.
+- [x] Add API, PKCE/session, controller, DOM-fixture, result and bundle checks;
+  keep credentials and live connection settings out of the default demo.
 - [ ] Repeat desktop/mobile, keyboard, accessibility and CSV checks with API fixtures.
+- [ ] Verify real Chrome identity/session APIs and deployed Cognito sign-in,
+  exact extension ID/callback/host permissions, and the deployed API/result flow.
 
 Suggested commit: `feat: connect the extension dashboard to analysis jobs`.
+
+The [extension walkthrough](serving-configuration.md#extension-connection-and-generated-bundles)
+explains the modules, access-only session, public settings and generated bundle.
+The source and public Pages site stay in demo mode by default. Native Chrome
+verification for this stage was blocked by the browser control's URL safety
+check; DOM fixtures do not establish visual layout, native identity behavior
+or production capacity. No real Cognito or live analysis check has passed in
+this stage. Sign-out clears the extension session; refresh-token handling,
+global Cognito logout and account deletion are not implemented.
 
 ## 8. AWS deployment, load test and release
 

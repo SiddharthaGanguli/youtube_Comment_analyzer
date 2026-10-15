@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { youtubeVideoUrl, summarize, filterComments, commentsCsv } from "../lib.mjs";
+import { youtubeVideoUrl, summarize, filterComments, commentsCsv, trendBuckets } from "../lib.mjs";
 import { demo } from "../demo-data.mjs";
 
 test("YouTube URL parsing supports watch, Shorts, live and short links without trusting other hosts", () => {
@@ -10,7 +10,35 @@ test("YouTube URL parsing supports watch, Shorts, live and short links without t
   }
   for (const value of [null, "bad-url", "https://youtube.com.evil.test/watch?v=abcdefghijk",
     "https://www.youtube.com/@channel", "javascript:alert(1)", "http://youtu.be/abcdefghijk",
-    "https://youtu.be/short"]) assert.equal(youtubeVideoUrl(value), null);
+    "https://youtu.be/short", "https://user:password@youtube.com/watch?v=abcdefghijk",
+    "https://youtube.com:8443/watch?v=abcdefghijk", "https://youtube.com/watch?v=abcdefghijk&v=lmnopqrstuv",
+    "https://youtu.be/abcdefghijk/other", "https://youtube.com/shorts/abcdefghijk/other",
+    " https://youtu.be/abcdefghijk", "https://youtube.com/watch?v=abcdefghijk\n"]) assert.equal(youtubeVideoUrl(value), null);
+});
+
+test("Skipped rows remain readable and exportable without predictions or review flags", () => {
+  const skipped = {id: "skipped", author: null, text: null, status: "skipped", sentiment: null,
+    confidence: null, needsReview: false, skippedReason: "text_too_long", likes: 0, publishedAt: "2026-10-02T12:00:00Z"};
+  const reviewed = {...demo.comments[0], confidence: .65, needsReview: true};
+  const rows = [skipped, reviewed];
+  assert.deepEqual(summarize(rows), {counts: {Positive: 1, Neutral: 0, Negative: 0}, total: 1, needsReview: 1});
+  assert.deepEqual(filterComments(rows, {reviewOnly: true}), [reviewed]);
+  assert.equal(filterComments(rows, {sort: "confidence"}).at(-1), skipped);
+  assert.ok(commentsCsv(rows).includes('"skipped","text_too_long"'));
+  assert.ok(!commentsCsv(rows).includes('"null"'));
+  assert.equal(filterComments(rows, {query: "null"}).length, 0);
+});
+
+test("UTC trend buckets cover sparse multi-year dates in at most seven periods", () => {
+  const rows = ["2024-01-01T23:59:59Z", "2025-06-12T10:00:00Z", "2026-10-15T00:00:00Z"]
+    .map((publishedAt, index) => ({...demo.comments[index], publishedAt}));
+  const buckets = trendBuckets(rows);
+  assert.ok(buckets.length <= 7);
+  assert.equal(buckets.reduce((sum, bucket) => sum + bucket.total, 0), rows.length);
+  assert.equal(buckets[0].start, "2024-01-01T00:00:00.000Z");
+  assert.equal(buckets.at(-1).end, "2026-10-15T00:00:00.000Z");
+  assert.deepEqual(trendBuckets([]), []);
+  assert.equal(trendBuckets(demo.comments).length, 7);
 });
 
 test("The demo totals, coverage and review count remain consistent", () => {

@@ -13,6 +13,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install extension test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
@@ -32,4 +38,4 @@ jobs:
           MPLCONFIGDIR: ${{ runner.temp }}/matplotlib
         run: python -m unittest discover -s tests -t . -v
       - name: Check extension behavior
-        run: node --test extension/tests/lib.test.mjs extension/tests/auth-pkce.test.mjs
+        run: npm test

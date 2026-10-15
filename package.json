@@ -1,0 +1,15 @@
+{
+  "name": "comment-lens-extension-checks",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Development checks for the plain JavaScript Chrome extension",
+  "scripts": {
+    "test": "node --test \"extension/tests/*.test.mjs\""
+  },
+  "engines": {
+    "node": "^24.15.0 || >=26.0.0"
+  },
+  "devDependencies": {
+    "jsdom": "30.1.2"
+  }
+}

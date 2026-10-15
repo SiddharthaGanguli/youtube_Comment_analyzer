@@ -1,14 +1,18 @@
-# Comment Lens extension preview
+# Comment Lens extension and demo
 
 The V1 design uses a small popup and a dashboard in a full tab. It is a
-Manifest V3 extension with plain HTML, CSS and JavaScript, so there is no build
-step and the code is easy to follow.
+Manifest V3 extension with plain HTML, CSS and JavaScript. The default source
+works as a demo; the bundle builder adds public deployment settings and exact
+permissions when the backend is ready.
 
 The preview has a video-link input, sentiment totals, coverage, a daily chart,
 search, sentiment/confidence filters, sorting, pagination, comment details,
 and CSV export. All dashboard numbers come from the same 24 handwritten sample
 comments in `demo-data.mjs`. The design labels the data as a demo throughout.
 Selecting a real YouTube URL does not fetch or analyze its comments yet.
+Step 7 implements the account/API connection alongside this preview. Its
+behavior is checked with offline responses and DOM fixtures. A generated
+connected bundle still needs deployed AWS settings and real Chrome validation.
 
 ## Try it in Chrome
 
@@ -33,6 +37,80 @@ You can also preview the pages without installing the extension:
 Open `http://127.0.0.1:8765/popup.html` or
 `http://127.0.0.1:8765/dashboard.html`. Browser previews support URL entry and
 dashboard interactions; detecting the active YouTube tab requires the extension.
+
+## Build a demo extension
+
+From the repository root, with Python and Node.js available:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/build_extension_bundle.py
+```
+
+Load `artifacts/extension` through **Load unpacked**. This generated demo
+has only `activeTab` permission and no configured account/API connection.
+The builder copies an explicit runtime-file allowlist and excludes tests,
+backend code, datasets and credentials. It refuses linked paths and unexpected
+files in an existing output directory.
+
+## Build a connected extension after deployment
+
+Use the assigned deployment outputs in a flat public JSON file, then build:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/build_extension_bundle.py --settings public-extension-settings.json
+```
+
+The JSON uses these fields; it contains public metadata, never tokens, client
+secrets, AWS credentials, a YouTube key or its secret value:
+
+| Field | Value |
+| --- | --- |
+| `enabled` | `true` for the configured connection; the checked-in default is `false` |
+| `apiBaseUrl` | Assigned API HTTPS origin, with a stage path if needed |
+| `cognitoDomain` | Assigned Cognito hosted-login HTTPS origin |
+| `clientId` | Assigned Cognito public-client ID |
+| `extensionId` | Actual 32-character ID shown by Chrome for this package |
+| `resultBaseUrl` | Assigned virtual-hosted S3 bucket HTTPS URL plus `serving/development` or `serving/production` prefix |
+| `pollScheduleSeconds` | Optional `[2, 5, 10]`; this is also the default |
+| `maxComments` | Optional integer from 1 to 1,000; defaults to 1,000 |
+
+There is no working production JSON in the repository because the serving
+endpoints and Cognito client have not been deployed. Use their real assigned
+values when available. Unknown fields, URL credentials, query strings and
+broader or unrelated result destinations are rejected.
+
+First load the generated demo directory and note its extension ID. Keep the
+package in that same directory when rebuilding. Its configured ID must match
+Chrome and the Cognito callback
+`https://<extension-id>.chromiumapp.org/cognito`. Moving an unpacked package can
+change its ID. The enabled manifest adds `identity`, `storage` and exactly the
+three configured API, Cognito and S3 host origins. Those origins must be
+distinct; there is no permission for every website.
+
+The builder creates files only. It does not deploy AWS, enable YouTube fetching
+or treat audit submission as approval. Default source settings stay disabled,
+and the public Pages dashboard always runs in demo mode.
+
+## Try the connected states without AWS
+
+Build a separate developer fixture preview:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/preview_extension_fixture.py
+.\.venv\Scripts\python.exe -m http.server 8766 --bind 127.0.0.1 --directory artifacts/extension-fixture
+```
+
+Open `http://127.0.0.1:8766/dashboard.html?scenario=success`. Accept the test
+policy checkbox, choose **Use fixture account**, then **Analyze comments**.
+The banner identifies this as a developer fixture test. It uses synthetic
+responses and makes no AWS, YouTube or real sign-in request.
+
+The scenario selector covers success, partial results, empty results,
+all-skipped comments, quota exhaustion, a busy service, failure and expiration.
+Ordinary 2/5-second polling advances the queued/fetching examples; the expiration
+scenario clears after 15 seconds. Filters, details, CSV, retry and removal can
+be exercised against the resulting UI. Pass `--output` to the preview builder
+to choose another empty or builder-owned directory. It does not start a server.
 
 ## Published demo
 
@@ -59,12 +137,13 @@ The dashboard still uses handwritten samples; live analysis, analytics-use
 approval and AWS backend deployment remain pending.
 
 [Publish demo pages](../.github/workflows/pages.yaml) runs on matching pushes to
-`main` or manual dispatch. It checks the two JavaScript behavior suites, runs
+`main` or manual dispatch. It checks the JavaScript behavior suites, runs
 `scripts/build_pages_site.py`, uploads `_site`, and deploys through the
 `github-pages` environment. The builder publishes only its explicit allowlist:
-the homepage, dashboard and legal HTML, their CSS, the dashboard/demo/library
-JavaScript, the official logo, and `.nojekyll`. It excludes the extension
-manifest/popup, backend, configuration, credentials, datasets and model artifacts.
+the homepage, dashboard and legal HTML, their CSS, demo dashboard modules,
+the official logo, and `.nojekyll`. It excludes the extension manifest/popup,
+account/API/session modules, runtime connection settings, backend, credentials,
+datasets and model artifacts. Fixture preview modules are excluded too.
 
 ## Privacy policy
 
@@ -85,9 +164,10 @@ Open `http://127.0.0.1:8765/privacy.html` to review the page locally.
 
 The PDF is prepared for the audit form's first evidence box. Use the published
 Privacy Policy URL above in the form's URL field. The policy identifies GitHub
-Pages and its hosting logs; live consent/account controls still need to be
-completed before live features launch. The demo homepage and branding are
-described below; final browser-window evidence still needs its address bar.
+Pages and its hosting logs. The connected extension now has policy consent and
+session controls; real account/deployment behavior still needs verification
+before launch. The developer reported submitting the audit on 15 October 2026;
+an accepted analytics-use decision and case reference have not been supplied.
 
 ## Terms of Service
 
@@ -131,8 +211,9 @@ a browser bar.
 
 The form's screenshot quality requirements are documented in the
 [official audit form](https://support.google.com/youtube/contact/yt_api_form?hl=en).
-Public HTTPS hosting is complete. The genuine Chrome window capture with its
-address bar remains a manual step; the page-content preview does not replace it.
+Public HTTPS hosting is complete. A page-content preview does not replace a
+genuine browser-window screenshot with its address bar. Retain the actual
+submitted evidence and correspondence with the audit record.
 
 ## Where to make changes
 
@@ -140,22 +221,29 @@ address bar remains a manual step; the page-content preview does not replace it.
 | --- | --- |
 | `manifest.json` | Extension name, popup, and permissions |
 | `popup.html`, `popup.mjs` | Current-video detection and dashboard launch |
-| `dashboard.html`, `dashboard.mjs` | Dashboard sections and interactions |
+| `dashboard.html`, `dashboard-app.mjs`, `dashboard.mjs` | Dashboard rendering and extension-only connection bootstrap |
 | `styles.css` | Shared layout, colors, typography, and responsive rules |
 | `privacy.html`, `terms.html`, `privacy.css` | Legal pages and their shared layout |
 | `index.html`, `home.css`, `assets/` | Demo homepage and official YouTube branding |
 | `demo-data.mjs` | Handwritten comment sample and current baseline metrics |
 | `lib.mjs` | URL parsing, filtering, summary counts, and CSV formatting |
+| `client-config.mjs`, `client-settings.mjs` | Validated public settings and disabled source defaults |
+| `auth-pkce.mjs`, `auth-session.mjs` | One-use PKCE flow and trusted access-token session |
+| `analysis-client.mjs`, `result-model.mjs` | Authenticated API calls and verified result/view data |
+| `job-controller.mjs` | Submission, polling, retry, expiry and removal lifecycle |
 
-Run the small behavior checks with Node.js:
+Run the behavior and DOM-fixture checks from the repository root:
 
 ```powershell
-node --test extension/tests/lib.test.mjs
+npm ci
+npm test
+.\.venv\Scripts\python.exe -m unittest tests.test_extension_bundle -v
 ```
 
-The checks cover URL validation, combined filters, consistent counts, and safe
-CSV quoting. The design has also been checked in headless Chrome for navigation,
-search, filters, pagination, export, comment details, and mobile overflow.
+The checks cover public settings, PKCE/session behavior, ownership-bound
+downloads, counts, controller transitions, cancellation, local filters and safe
+CSV quoting. jsdom is a development test dependency; the extension's runtime
+still uses packaged JavaScript without a third-party frontend framework.
 
 ## Finalized design
 
@@ -165,12 +253,13 @@ review, the searchable comment table, and coverage/model details. The quiet
 sidebar links to these sections. Below 700px the charts stack; the comment table
 scrolls inside its own container so every column remains available.
 
-The review preserved this layout and corrected keyboard focus when a sentiment
-filter is selected. Demo status, skipped counts, and the meaning of confidence
-stay visible. Browser checks cover 1440px desktop and 390px mobile layouts,
-keyboard filtering, dialog close/focus, search, exports, pagination, and URL
-feedback. Automated accessibility checks cover the dashboard and popup; they
-complement the visual and keyboard review.
+The earlier demo review preserved this layout and corrected keyboard focus
+when a sentiment filter is selected. Demo status, skipped counts, and the
+meaning of confidence stay visible. Those earlier demo checks do not establish
+that the new connected screens work in native Chrome. The current stage's
+native Chrome verification was blocked by the browser control's URL safety
+check. Connected desktop/mobile layout, keyboard/accessibility, real sign-in
+and deployed end-to-end checks remain pending; DOM fixtures do not replace them.
 
 ## Backend handoff
 
@@ -178,13 +267,14 @@ The serving [system design](../docs/system-design.md),
 [HTTP/result contract](../docs/backend-contract.yaml), and
 [implementation plan](../docs/backend-plan.md) specify sign-in, job polling,
 private result downloads, latest top-level sampling and launch limits.
-They are specifications; the preview is not connected to a backend yet.
+The backend routes and extension connection are implemented. Real connection
+requires a generated enabled bundle and the assigned deployment outputs.
 
-Keep `demo-data.mjs` as the preview fixture when the backend is added. A real
-analysis response should supply the video's metadata, fetched/analyzed/skipped
-counts, sample period, model version, and comments. Each comment needs an ID,
-author, text, sentiment, confidence, likes, and publish time. The charts should
-aggregate the returned comments, and exports should use the current filters.
+`demo-data.mjs` remains the labeled preview. The connected dashboard instead
+uses a validated result with the video's metadata, counts, sample period,
+model version and comments. Skipped rows and missing authors have explicit
+display values. Charts use analyzed comments; coverage and skipped counts stay
+visible. Filters, search, charts and CSV share that one in-memory result.
 
 The shared [prediction service](../docs/prediction.md) is ready for the backend.
 It accepts raw text and returns ordered results, three class scores, review
@@ -193,18 +283,26 @@ the fetched comment metadata using their input indices. Keep unknown-vocabulary
 skips visible alongside empty-comment skips; compute chart percentages from
 analyzed comments only.
 
-The backend will validate the URL, fetch comments, call the prediction service,
-and return video/comment metadata with predictions. The extension will need loading,
-progress, empty-video and failure states before live analysis is enabled.
-YouTube/AWS credentials belong in that backend. They never belong in the
-extension bundle. The preview still uses the demo fixture. Live YouTube
-fetching, connecting the extension, and AWS deployment remain future
-work. HTTP routes and the fixture worker are implemented and tested separately;
-this preview still makes no backend requests.
+Before account access or submission, the connected UI requires the policy and
+terms checkbox. Sign-in starts only after a click. `AuthSession` uses S256 and
+one-use state, and stores only the access token, expiry and a nonsecret revision
+in `chrome.storage.session` restricted to trusted extension contexts. It does
+not keep an ID token or refresh token. Access-token expiry requires sign-in
+again. Signing out clears this extension session and invalidates pending work
+across its windows; it does not perform global Cognito logout or close an account.
 
-`auth-pkce.mjs` prepares the later sign-in flow: fresh state/verifier, mandatory
-S256, an exact Chromium callback and a one-use token-exchange descriptor. It
-performs no request and stores no token. The UI does not call it yet; `identity`
-permissions, restricted session storage and deployed public settings are added
-when connecting the extension. Run both module suites with
-`node --test extension/tests/lib.test.mjs extension/tests/auth-pkce.test.mjs`.
+The controller shows queued/fetching/inference/saving progress and distinct
+partial, empty, all-skipped, quota, busy, error, expired and deleted states.
+Polling follows 2/5/10-second delays with jitter, honors server retry delays,
+and pauses while hidden. A retry of an uncertain submission reuses its UUID
+key while that submission remains in the open controller. Result downloads
+verify their byte count, SHA-256 and association with the owned status; one
+expired/403 download link can be renewed without resubmitting the job.
+Removal deletes the owned history reference, while shared work/results follow
+the backend's retention rules. Sign-out, account changes and expiry clear
+displayed account results and stop stale requests from repainting the UI.
+
+YouTube/AWS credentials stay in the backend. Real Cognito sign-in, the approved
+live sample, AWS deployment and load testing remain pending. See the
+[connection walkthrough](../docs/serving-configuration.md#extension-connection-and-generated-bundles)
+for the implementation order and remaining checks.

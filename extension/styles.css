@@ -331,3 +331,18 @@ body.popup { width: 360px; min-width: 360px; background: white; }
   .filter { padding: 7px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } button, a { transition: none; } }
+
+.connection-panel, .job-status { padding: 18px 20px; margin: 16px 0; border: 1px solid var(--border); border-radius: 12px; background: white; }
+.connection-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.connection-panel p, .job-status p { margin: 6px 0; font-size: 12px; line-height: 1.7; }
+.connection-panel > div:first-child { flex: 1 1 260px; }
+.connection-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.policy-consent { display: flex; gap: 9px; align-items: flex-start; flex-basis: 100%; font-size: 12px; line-height: 1.7; }
+.policy-consent input { margin-top: 4px; }
+.job-status.error { border-color: #e9b9b9; background: #fff8f7; }
+.model-release { overflow-wrap: anywhere; white-space: normal; max-width: 100%; }
+.sentiment-pill.skipped { color: #585d70; background: #edf0f5; }
+.trend-day-label { overflow-wrap: anywhere; }
+#remove-dialog { max-width: 460px; }
+#remove-dialog p { line-height: 1.8; margin: 16px 0; }
+[hidden] { display: none !important; }

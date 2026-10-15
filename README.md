@@ -2,10 +2,11 @@
 
 YouTube comment sentiment analysis with reproducible data and model pipelines.
 
-The Chrome extension design is in [extension/](extension/README.md): a small
-popup that opens a full dashboard tab. It currently uses clearly labeled sample
-comments, with sentiment charts, coverage, filters, comment details and CSV
-export. Connecting live analysis and deploying the AWS backend remain pending.
+The Chrome extension is in [extension/](extension/README.md): a small popup
+opens a full dashboard tab with sentiment charts, coverage, filters, comment
+details and CSV export. Its backend connection is implemented and tested with
+offline fixtures. The checked-in extension and public website use labeled demo
+comments; a connected bundle requires the assigned AWS deployment settings.
 
 The static [Comment Lens demo](https://siddharthaganguli.github.io/youtube_Comment_analyzer/),
 [dashboard](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html),
@@ -16,9 +17,10 @@ Lens backend calls. GitHub receives page requests and logs visitor IP addresses;
 the privacy policy explains dashboard URLs that may contain a selected video
 link. The [Pages workflow](.github/workflows/pages.yaml) publishes only the
 builder's allowlist of static demo files, excluding backend configuration,
-credentials, datasets and model artifacts. Live analytics-use approval and AWS
-deployment remain pending, as does the genuine browser-window capture required
-for audit evidence.
+credentials, datasets and model artifacts. The developer reported submitting
+the YouTube audit on 15 October 2026. Submission is not analytics-use approval;
+no accepted decision or case reference has been recorded, and live fetching
+remains disabled. AWS serving deployment is still pending.
 
 The [serving system design](docs/system-design.md) targets 1,000 active users
 with separate API and model workers, bounded YouTube fetching, shared public
@@ -33,7 +35,7 @@ validate configuration, persist owned jobs, coordinate worker leases and queue
 delivery, and store private results with bounded retention. AWS adapter checks
 use local fixtures. FastAPI exposes owned submission/status/download/deletion,
 current model metadata and liveness, with scope checks and safe error envelopes.
-No serving resources are deployed. Run
+API/worker serving infrastructure remains undeployed. Run
 `python -m src.Sentiment_analysis.config.serving` from the project environment
 to check `config/serving.yaml`. The worker resumes page/batch checkpoints, uses
 the shared predictor with one native thread, and publishes validated private
@@ -42,10 +44,30 @@ Secrets Manager key loading, durable retry delays, public checks on resume and
 a shared quota/credential circuit. It accepts explicit development fixtures or
 the approval-gated live provider. The auth template defines Cognito, scoped gateway routes, throttles
 and alarms; an S256 PKCE helper and allowlisted serving metrics are tested too.
-Cognito deployment, authorized live verification and extension connection remain
-pending. Live fetching is disabled in the checked-in settings. See the
+Cognito deployment and authorized live verification remain pending. Step 7 adds
+the extension's user-initiated PKCE sign-in, trusted access-token session,
+consent controls, job polling, verified result downloads and owned deletion.
+Filters and exports reuse the downloaded result. Native Chrome verification
+for this stage was blocked by the browser control's URL safety check; real
+sign-in, visual/keyboard checks and cloud end-to-end/load checks remain pending.
+Live fetching is disabled in the checked-in settings. See the
 [YouTube walkthrough](docs/serving-configuration.md#youtube-provider-and-live-readiness)
-and [auth/monitoring walkthrough](docs/serving-configuration.md#authentication-quota-controls-and-monitoring).
+and [extension connection walkthrough](docs/serving-configuration.md#extension-connection-and-generated-bundles).
+
+Build the default demo extension and run its local checks from the repository
+root:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/build_extension_bundle.py
+npm ci
+npm test
+.\.venv\Scripts\python.exe -m unittest tests.test_extension_bundle -v
+```
+
+Load `artifacts/extension` through Chrome's **Load unpacked** command. Keep
+that directory stable when assigning its extension ID and Cognito callback.
+The [extension guide](extension/README.md#build-a-connected-extension-after-deployment)
+explains the public settings file; no AWS or YouTube secret belongs in a bundle.
 
 To inspect the API locally without connecting to AWS:
 
@@ -159,10 +181,10 @@ review flags, skipped inputs, and coverage. Try it with:
 ```
 
 The JSON result is saved under `artifacts/model_prediction/`. See
-[prediction usage and the response contract](docs/prediction.md). The extension
-remains a design preview; the YouTube provider is implemented, while authorized
-live verification, connecting the extension to the HTTP backend, and AWS
-deployment remain pending.
+[prediction usage and the response contract](docs/prediction.md). The YouTube
+provider and extension/API connection source are implemented. The checked-in
+extension remains a demo; authorized live verification, native Chrome checks
+and the AWS serving deployment remain pending.
 
 ## MLflow experiments and stage artifacts
 

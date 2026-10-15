@@ -1,4 +1,4 @@
-# Backend settings, storage, API, worker and authentication
+# Backend and extension serving walkthrough
 
 The backend starts with three pieces: a settings file, Python types describing
 those settings and our API data, and a manager that joins the two. We can check
@@ -453,9 +453,10 @@ deletion (`204`); these now match the implementation. The test dependency file
 stays separate from deployed requirements. These tests establish HTTP behavior,
 not 1,000-user AWS capacity.
 
-The fixture worker is implemented in the next section. Live YouTube fetching,
-extension sign-in and AWS deployment remain later steps in the
-[backend plan](backend-plan.md).
+The fixture worker is implemented in the next section. The later sections
+describe the gated live provider and implemented extension connection. Real
+sign-in, an authorized live sample and AWS deployment remain verification work
+in the [backend plan](backend-plan.md).
 
 ## Fixture worker and shared predictions
 
@@ -668,12 +669,14 @@ Redirects and browser credentials are disabled on that exchange descriptor.
 Provider errors remain generic; raw callback URLs and error descriptions are
 never logged by this helper.
 
-The helper performs no network request or storage write. Step 7 must call it
-only after a user clicks Sign in, keep pending state and tokens in trusted
-extension session storage, handle expiration/restarts, and use access tokens
-for the API. Typing an arbitrary bearer string into standalone Swagger still
-does not create a trusted gateway context. The preview's permissions and demo
-UI remain unchanged until the connection stage.
+The helper performs no network request or storage write. Step 7's
+`AuthSession` now calls it after a user clicks Sign in, keeps the pending
+verifier in memory and stores only the access token, expiry and nonsecret
+revision in trusted extension session storage. It handles expiry and uses
+access tokens for the API. Typing an arbitrary bearer string into standalone
+Swagger still does not create a trusted gateway context. The checked-in
+settings and public website stay in demo mode; a generated enabled extension
+receives the exact permissions needed by its assigned deployment.
 
 ### Metrics without comment or identity data
 
@@ -751,7 +754,8 @@ Full-suite discovery uses `python -m unittest discover -s tests -t . -v`.
 The explicit repository top level keeps `tests.infra` distinct from the
 application's `infra` package.
 
-Step 5 is implemented and fixture-tested, but sign-in is not deployed or connected.
+Step 5's infrastructure and step 7's sign-in connection are implemented and
+fixture-tested. Real Cognito sign-in is not deployed or verified.
 Before deployment, supply the stable extension ID and existing API function,
 copy real public outputs into serving/extension settings, audit invocation
 permissions, configure log/notification delivery and verify sign-in with a real
@@ -833,6 +837,12 @@ point loads no model or AWS clients.
 
 ### Record analytics approval
 
+The developer reported submitting the audit on **2026-10-15**. No accepted
+analytics-use decision or case reference has been supplied. Keep the submitted
+evidence and review correspondence, and record the accepted decision when it
+arrives. Submission does not change `analytics_use_approved: false`,
+`approval_reference: null` or `live_enabled: false` in `config/serving.yaml`.
+
 If approval has already been granted, record the decision reference in
 `youtube.approval_reference` and verify that it covers this project's comment
 sentiment use case. There is no mandatory case-ID format in the published
@@ -852,8 +862,8 @@ The form asks for the numeric Google Cloud **project number**, available beside
 the project ID on the Cloud dashboard. It also asks for a public HTTPS privacy
 policy and dashboard evidence. The project ID recorded here is
 `applied-polymer-511605-m3`; `youtube.project_number` records `170746039104`
-from the user's pasted audit form. Confirm their association in Cloud project
-information before submitting. The static demo and legal pages are now published
+from the user's pasted audit form. Confirm their association when reviewing or
+amending the submitted evidence. The static demo and legal pages are now published
 on GitHub Pages; their HTTPS pages and assets were verified on 2026-10-14. Use
 the exact URLs below and label preview screenshots as demo data.
 
@@ -896,7 +906,8 @@ The static demo makes no YouTube Data API or Comment Lens backend calls. GitHub
 receives page/asset requests and logs visitor IP addresses for security; opening
 or reloading a dashboard URL containing a selected video link sends that URL to
 GitHub too. The privacy policy identifies this hosting behavior and separate
-provider retention. Live privacy consent/account controls remain pending.
+provider retention. Step 7 implements the extension's consent/session controls;
+their native Chrome behavior and real account/deployment flow remain pending.
 
 The [published demo homepage](https://siddharthaganguli.github.io/youtube_Comment_analyzer/) now shows the Privacy Policy link
 and a separate official YouTube branding block. It links to the demo and legal
@@ -912,17 +923,19 @@ asks for readable evidence at least 1280x720 pixels, including the browser
 address bar, and one file smaller than 10 MB. Open the published Homepage URL
 above for the final capture so its real HTTPS address is visible.
 
-The public HTTPS app/policy URLs are available. The genuine homepage window
-capture and a fresh dashboard screenshot with its demo label and browser address
-bar remain manual steps. Publication does not grant YouTube analytics-use
-approval or deploy the AWS backend; both remain pending.
+The public HTTPS app/policy URLs are available. Retain the genuine window
+captures and documents used in the reported audit submission; page-content
+previews do not replace screenshots with an address bar. Publication does not
+grant YouTube analytics-use approval or deploy the AWS backend; both remain
+pending.
 
-The [Pages workflow](../.github/workflows/pages.yaml) checks the extension's two
-JavaScript suites, stages an explicit static-file allowlist with
+The [Pages workflow](../.github/workflows/pages.yaml) checks the extension's
+JavaScript suite, stages an explicit static-file allowlist with
 `scripts/build_pages_site.py`, and deploys `_site` through GitHub Pages. Only
-the homepage/dashboard/legal HTML, their CSS and dashboard/demo/library scripts,
-the official logo and `.nojekyll` are published. Backend code, configuration,
-credentials, datasets and model artifacts are excluded from the site artifact.
+the homepage/dashboard/legal HTML, their CSS and demo dashboard modules, the
+official logo and `.nojekyll` are published. Extension account/API/session and
+fixture modules, connection settings, backend code, credentials, datasets and
+model artifacts are excluded from the site artifact.
 
 This draft describes the current implementation and proposed live behavior:
 
@@ -1041,8 +1054,189 @@ The adapter and worker wiring are implemented. The small live verification
 has not run: analytics-use approval evidence, verification of the configured secret and
 worker-role access, assigned
 serving table and immutable worker release must be ready first. No serving
-AWS resources were created in this stage. Use the normal admitted job → outbox
+API/worker infrastructure has been deployed. Use the normal admitted job → outbox
 → worker path for that live sample so spending, ownership and retention are
 tested together. Check metadata visibility, comment ordering, pagination,
 actual attempt units, result counts, safe faults and eventual cleanup. The
-extension remains a demo until step 7 connects it.
+extension's connection source is implemented below; its checked-in defaults
+and public Pages site remain a demo.
+
+## Extension connection and generated bundles
+
+Step 7 connects the existing API contract to the dashboard. It is implemented
+and checked with synthetic authentication/API responses and DOM fixtures.
+The source does not contain deployed account or API settings. The public
+website always shows the demo, while the Chrome extension can use a generated
+configuration after the AWS deployment is ready.
+
+This distinction helps when reading the files: the UI and request logic can be
+exercised now, without setting `live_enabled` or spending YouTube quota. An
+audit submission is still separate from accepted analytics-use evidence.
+
+### Follow the data through the extension
+
+| File | Responsibility |
+| --- | --- |
+| `extension/client-config.mjs` | Validate public URLs, IDs, the private result prefix and client limits |
+| `extension/client-settings.mjs` | Disabled source default; the bundle builder writes assigned public values into the output |
+| `extension/auth-pkce.mjs` | Fresh state/verifier, S256 and a one-use exact callback |
+| `extension/auth-session.mjs` | User-initiated Cognito exchange and access-only trusted session |
+| `extension/analysis-client.mjs` | Authenticated fixed API routes and bounded, verified private downloads |
+| `extension/result-model.mjs` | Validate counts, model/sampling identity and comment states; adapt data for rendering |
+| `extension/job-controller.mjs` | Own the visible request, poll, retry, expire, remove and fence stale responses |
+| `extension/dashboard-app.mjs` | Render demo or connected state, consent controls, charts, table and export |
+| `extension/dashboard.mjs` | Load connection modules only in a configured Chrome extension |
+
+The popup still reads the active tab only when invoked. The connected UI asks
+the user to read the Privacy Policy and accept the Terms before account access
+or submission. Opening the dashboard does not start an interactive login or an
+analysis. Demo mode remains available without signing in.
+
+### What the session keeps
+
+`AuthSession` checks that Chrome's runtime ID, extension URL and
+`identity.getRedirectURL("cognito")` match the assigned extension. It restricts
+`chrome.storage.session` to `TRUSTED_CONTEXTS`. The session record contains
+only the access token, expiry time and a nonsecret sign-out revision. ID and
+refresh tokens returned by Cognito are not retained. The pending verifier
+stays in memory and is cleared when the attempt finishes or is cancelled.
+
+Token response size, destination, JSON type, token use, client ID, scopes and
+lifetime are checked. Decoding JWT claims here bounds client behavior; it is
+not signature verification. API Gateway and the backend remain the authority
+for signature, issuer, audience, expiry, scopes and owner access.
+
+There is no refresh-token flow: the user signs in again when the access token
+expires. Sign-out clears the extension session and changes a nonsecret
+revision so another window's pending sign-in cannot restore it. Account
+changes clear the old window's displayed results. This action does not call
+Cognito's global logout, revoke an already issued JWT elsewhere, delete an
+account or clear the provider's hosted-login cookies.
+
+### Request and result lifecycle
+
+A fresh submission gets a UUID retry key. If its response is lost, the
+controller's Retry action reuses that key for the same remembered submission.
+The API client never retries a POST automatically. A new submission gets a new
+key, and a reloaded dashboard does not recover an unfinished submission from
+persistent history.
+
+Queued, fetching, inference and saving states use the API's actual progress.
+Polling follows 2/5/10-second delays with jitter and honors server retry delays.
+It pauses while the page is hidden. One visible request is tracked by this
+controller; cancellation and a revision fence stop an old request or account
+from repainting newer state. Transient polling failures have bounded retries.
+Quota errors retain the reset time; busy and rate-limit errors retain the
+suggested wait. Errors use fixed client copy, without echoing provider messages,
+tokens or signed URLs.
+
+When a terminal result is available, the client obtains its owned download
+descriptor. It checks the exact configured S3 origin/private prefix, immutable
+result path, expiry, byte ceiling, exact byte count, SHA-256 and result schema.
+The S3 request receives no API bearer token or browser credentials. A 403 or
+expired descriptor can be renewed once without creating another analysis.
+The API's verified status is matched to the downloaded video's ID, model,
+sampling, state and counts.
+
+The result is kept in memory for charts, comments, search, filters and CSV;
+changing a filter makes no API call. Positive/neutral/negative percentages use
+analyzed comments. Empty, unknown-vocabulary and oversized-text skips remain
+visible, and the review threshold comes from the result's model. Current-model
+evaluation details are displayed only when their release matches the result.
+The view uses the earlier owned-request expiry when a shared result lasts longer.
+
+Partial, empty, all-skipped, failed, quota, busy, expired and deleted outcomes
+have distinct states. Expiry, sign-out and account changes clear displayed
+private results. Removing an analysis deletes the user's reference; shared
+work/results keep the backend's normal retention, and previously issued
+download links follow their existing short expiry. It does not cancel another
+user's shared work or delete an account.
+
+### Generate the package from public deployment values
+
+Run from the repository root, with Python and a Node version supported by
+`package.json`:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/build_extension_bundle.py
+```
+
+The default output is `artifacts/extension`, an unpacked demo package with
+`enabled: false` and only `activeTab` permission. Load that directory in
+Chrome and keep it at that path when assigning its extension ID. Moving an
+unpacked extension can change the ID; the package settings, Chrome's ID and
+Cognito callback must match exactly.
+
+After the API, Cognito and private serving bucket/prefix are deployed, provide
+a flat public JSON file to the same builder:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/build_extension_bundle.py --settings public-extension-settings.json
+```
+
+Its fields are `enabled`, `apiBaseUrl`, `cognitoDomain`, `clientId`,
+`extensionId`, `resultBaseUrl`, optional `pollScheduleSeconds: [2, 5, 10]`,
+and optional `maxComments` from 1 to 1,000. The
+[extension guide](../extension/README.md#build-a-connected-extension-after-deployment)
+describes each value. Use assigned AWS HTTPS origins and the actual Chrome ID;
+placeholder endpoints are not a working production configuration. S3 uses its
+assigned virtual-hosted bucket origin and a private `serving/development` or
+`serving/production` prefix. API, Cognito and result storage must have distinct
+origins.
+
+An enabled generated manifest adds `identity`, `storage` and only those three
+exact host origins. The packager validates public fields through the same
+JavaScript module, copies an explicit runtime allowlist, and refuses linked
+paths or an output directory containing unexpected files. `--output` can select
+another empty or previously builder-owned directory. It never reads or copies
+backend credential files, data/model artifacts or test fixtures. No deployment
+or YouTube approval flag is changed by building a package.
+
+### Exercise the connected screens locally
+
+The fixture preview builder creates a separate, labeled developer artifact:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/preview_extension_fixture.py
+.\.venv\Scripts\python.exe -m http.server 8766 --bind 127.0.0.1 --directory artifacts/extension-fixture
+```
+
+Open `http://127.0.0.1:8766/dashboard.html?scenario=success`, accept the test
+policy checkbox, choose **Use fixture account**, then **Analyze comments**.
+The persistent developer-fixture banner states that there are no AWS or
+YouTube calls. The scenario selector also offers partial, empty, all-skipped,
+quota, busy, failed and expired responses. Normal polling advances the queued
+examples, and the expiration case clears after 15 seconds. `--output` changes
+the fixture destination; the builder does not launch the server. Fixture
+modules are excluded from ordinary extension bundles and public Pages output.
+
+Run the automated checks from the repository root:
+
+```powershell
+npm ci
+npm test
+.\.venv\Scripts\python.exe -m unittest tests.test_extension_bundle -v
+```
+
+`package-lock.json` pins the development test dependencies. The Node suite
+covers PKCE/session handling, cancellation/account races, client settings,
+download safety, result/count invariants, controller states, filters/CSV and
+DOM fixtures. The Python bundle tests check generated settings, exact
+permissions, allowlisted files and safe output replacement. These fixtures do
+not prove native Chrome behavior, production access control or capacity.
+
+### What still needs a real environment
+
+The current native Chrome verification was blocked by the browser control's
+URL safety check. No new native Chrome visual, identity or real Cognito check
+is claimed for this stage. Repeat desktop/mobile layout, keyboard/focus,
+accessibility, CSV/download and native identity/session checks against the
+generated package. Verify the stable extension ID, exact callback, scopes,
+host permissions and API/S3 CORS in the deployed environment.
+
+The accepted analytics-use decision and its reference, authorized live sample,
+AWS serving deployment, budgets/alarms, release promotion/rollback and
+1,000-user load/fault checks remain open in the [backend plan](backend-plan.md).
+The user-reported audit submission on 2026-10-15 leaves approval pending.
+Checked-in serving approval/live flags and client connection defaults remain
+disabled.

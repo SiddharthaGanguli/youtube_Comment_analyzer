@@ -24,6 +24,7 @@ __pycache__/
 build/
 dist/
 .pytest_cache/
+node_modules/
 .mypy_cache/
 .ruff_cache/
 .ipynb_checkpoints/

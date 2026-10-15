@@ -14,7 +14,7 @@ OUTPUT = ROOT / "_site"
 WEB_FILES = (
     "index.html", "dashboard.html", "privacy.html", "terms.html",
     "styles.css", "home.css", "privacy.css",
-    "dashboard.mjs", "demo-data.mjs", "lib.mjs",
+    "dashboard.mjs", "dashboard-app.mjs", "demo-data.mjs", "lib.mjs",
     "assets/developed-with-youtube.png",
 )
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Comment Lens",
-  "version": "0.1.0",
-  "description": "Preview a clear dashboard for YouTube comment sentiment and comment exploration.",
+  "version": "0.2.0",
+  "description": "Explore the demo dashboard or analyze public comment samples through your configured service.",
   "permissions": ["activeTab"],
   "action": {
     "default_title": "Open Comment Lens",
