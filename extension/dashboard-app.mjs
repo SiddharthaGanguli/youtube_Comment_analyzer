@@ -2,7 +2,7 @@ import { demo } from "./demo-data.mjs";
 import { LABELS, youtubeVideoUrl, summarize, filterComments, commentsCsv, trendBuckets, isReview } from "./lib.mjs";
 
 const $ = selector => document.querySelector(selector);
-let view = demo, isDemo = true, controller, resultAdapter, renderedResult;
+let view = demo, isDemo = true, syntheticService = false, controller, resultAdapter, renderedResult;
 let summary = summarize(view.comments);
 const state = { sentiment: "All", query: "", reviewOnly: false, sort: "likes", page: 1 };
 const pageSize = 6;
@@ -20,16 +20,18 @@ function element(tag, className, text) {
 }
 
 function initializeSummary() {
+  const fixture = !isDemo && syntheticService;
   summary = summarize(view.comments);
-  $("#video-title").textContent = view.video.title;
-  $("#video-channel").textContent = view.video.channel;
-  $("#video-card").setAttribute("aria-label", isDemo ? "Selected demo video" : "Selected video");
-  $("#video-eyebrow").textContent = isDemo ? "DEMO VIDEO" : "PUBLIC COMMENT SAMPLE";
+  $("#video-title").textContent = fixture ? "Synthetic comment analysis test" : view.video.title;
+  $("#video-channel").textContent = fixture ? "No comments were fetched from this video" : view.video.channel;
+  $("#video-card").setAttribute("aria-label", isDemo ? "Selected demo video" : fixture ? "Synthetic fixture results" : "Selected video");
+  $("#video-eyebrow").textContent = isDemo ? "DEMO VIDEO" : fixture ? "SYNTHETIC FIXTURE RESULTS" : "PUBLIC COMMENT SAMPLE";
   $("#video-thumbnail").hidden = !isDemo;
+  $("#analyzed-stat-label").textContent = fixture ? "Test comments analyzed" : "Comments analyzed";
   $("#total-stat").textContent = summary.total;
-  $("#coverage-stat").textContent = `of ${view.video.fetched} unique received · ${percent(view.video.fetched ? summary.total / view.video.fetched : 0)} coverage`;
+  $("#coverage-stat").textContent = `of ${view.video.fetched} ${fixture ? "synthetic comments" : "unique received"} · ${percent(view.video.fetched ? summary.total / view.video.fetched : 0)} coverage`;
   $("#nav-count").textContent = view.comments.length;
-  $("#chart-count").textContent = `${summary.total} analyzed`;
+  $("#chart-count").textContent = `${summary.total} ${fixture ? "test comments " : ""}analyzed`;
   $("#donut-total").textContent = summary.total;
   $("#review-count").textContent = summary.needsReview;
   const threshold = view.model.reviewThreshold ?? .6;
@@ -40,7 +42,7 @@ function initializeSummary() {
   for (const label of LABELS) {
     const key = label.toLowerCase();
     $(`#${key}-stat`).replaceChildren(document.createTextNode((share(label) * 100).toFixed(1)), element("span", "", "%"));
-    $(`#${key}-count`).textContent = `${summary.counts[label]} comments`;
+    $(`#${key}-count`).textContent = `${summary.counts[label]} ${fixture ? "test " : ""}comments`;
     const row = element("div", "legend-row");
     row.append(element("i", `${key}-bg`), element("span", "", label),
                element("strong", "", percent(share(label))),
@@ -52,18 +54,19 @@ function initializeSummary() {
   $("#donut").style.background = summary.total ? `conic-gradient(var(--positive) 0% ${positiveEnd}%, var(--neutral) ${positiveEnd}% ${neutralEnd}%, var(--negative) ${neutralEnd}% 100%)` : "var(--border)";
   $("#donut").setAttribute("aria-label", LABELS.map(label => `${summary.counts[label]} ${label.toLowerCase()}`).join(", ") + " comments");
   $("#fetched-count").textContent = view.video.fetched;
-  $("#video-comment-total").textContent = isDemo ? "Sample fixture" : view.video.totalCommentCount ?? "Not available";
+  $("#video-comment-total").textContent = isDemo ? "Sample fixture" : fixture ? `Synthetic value: ${view.video.totalCommentCount ?? "Not available"}` : view.video.totalCommentCount ?? "Not available";
   $("#analyzed-count").textContent = summary.total;
   $("#skipped-count").textContent = view.video.skipped;
   const period = trendBuckets(view.comments);
   const range = period.length ? `${date(period[0].start)} – ${date(period.at(-1).end)} (UTC)` : "No comment dates";
   $("#sample-period").textContent = range;
   $("#video-sample-period").textContent = range;
-  $("#coverage-note").textContent = isDemo ? "These totals describe the demo sample." : `Latest top-level public comments; replies are excluded. ${view.video.duplicatesRemoved || 0} duplicates removed. ${view.sampling?.has_more ? "More comments may be available." : "This is a sample, not a measure of the whole audience."}`;
-  $("#model-release").textContent = isDemo ? "V1 baseline" : view.model.releaseId;
-  $("#model-quality").textContent = isDemo ? `Held-out test accuracy: ${percent(demo.model.testAccuracy)} · Macro F1: ${percent(demo.model.testMacroF1)} · ${demo.model.testRows.toLocaleString()} test comments. These are dataset results, not the accuracy of this video.` : "Evaluation for this release is not available here. These are independent model estimates, not YouTube metrics.";
+  $("#coverage-note").textContent = isDemo ? "These totals describe the demo sample." : fixture ? "These counts describe fixed synthetic comments, not the linked video. Changing the URL only tests the request flow." : `Latest top-level public comments; replies are excluded. ${view.video.duplicatesRemoved || 0} duplicates removed. ${view.sampling?.has_more ? "More comments may be available." : "This is a sample, not a measure of the whole audience."}`;
+  $("#model-release").textContent = isDemo ? "V1 baseline" : fixture ? "Synthetic model release" : view.model.releaseId;
+  $("#model-quality").textContent = isDemo ? `Held-out test accuracy: ${percent(demo.model.testAccuracy)} · Macro F1: ${percent(demo.model.testMacroF1)} · ${demo.model.testRows.toLocaleString()} test comments. These are dataset results, not the accuracy of this video.` : fixture ? "Model scores and evaluation numbers in this test are synthetic." : "Evaluation for this release is not available here. These are independent model estimates, not YouTube metrics.";
   $("#skipped-breakdown").textContent = isDemo ? "4 empty sample comments are excluded from the demo table." : Object.entries(view.summary?.skipped_by_reason || {}).map(([reason, count]) => `${skipCopy(reason)}: ${count}`).join(" · ");
-  $("#sample-expiry").textContent = isDemo ? "Sample data stays in your browser." : `Access expires ${fullDate(view.expiresAt)}. ${view.partialReason ? `Partial sample: ${view.partialReason.replaceAll("_", " ")}.` : ""}`;
+  $("#sample-expiry").textContent = isDemo ? "Sample data stays in your browser." : `${fixture ? "Synthetic test result" : "Access"} expires ${fullDate(view.expiresAt)}. ${view.partialReason ? `Partial sample: ${view.partialReason.replaceAll("_", " ")}.` : ""}`;
+  $("#comments-subtitle").textContent = fixture ? "Fixed synthetic comments for testing the interface." : isDemo ? "Explore handwritten sample comments." : "Read what viewers are saying, in their own words.";
 }
 
 function renderTrend() {
@@ -115,7 +118,7 @@ function openComment(comment) {
     element("span", "", `${comment.likes} likes`),
     element("span", "", date(comment.publishedAt)),
   );
-  $("#dialog-note").textContent = isDemo ? "This is a handwritten sample comment." : "Sentiment is generated independently by Comment Lens and may be incorrect. Skipped comments have no prediction.";
+  $("#dialog-note").textContent = isDemo ? "This is a handwritten sample comment." : syntheticService ? "This comment and its sentiment scores are synthetic test data, unrelated to the linked video." : "Sentiment is generated independently by Comment Lens and may be incorrect. Skipped comments have no prediction.";
   $("#comment-dialog").showModal();
 }
 
@@ -157,7 +160,7 @@ function renderComments() {
     $("#comment-rows").append(row);
   }
   $("#empty-state").hidden = filtered.length !== 0;
-  $("#result-badge").textContent = `${filtered.length} ${filtered.length === 1 ? "result" : "results"}`;
+  $("#result-badge").textContent = `${filtered.length} ${!isDemo && syntheticService ? "synthetic " : ""}${filtered.length === 1 ? "result" : "results"}`;
   $("#page-info").textContent = filtered.length ? `Showing ${start + 1}–${Math.min(start + pageSize, filtered.length)} of ${filtered.length} comments` : "Showing 0 comments";
   $("#page-number").textContent = `${state.page} / ${pageCount}`;
   $("#previous").disabled = state.page === 1;
@@ -197,12 +200,12 @@ $("#export").addEventListener("click", () => {
   const url = URL.createObjectURL(blob);
   const link = element("a");
   link.href = url;
-  link.download = isDemo ? "comment-lens-demo-comments.csv" : "comment-lens-comments.csv";
+  link.download = isDemo ? "comment-lens-demo-comments.csv" : syntheticService ? "comment-lens-synthetic-comments.csv" : "comment-lens-comments.csv";
   document.body.append(link);
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  $("#toast").textContent = `Exported ${comments.length} ${isDemo ? "sample " : ""}comments with the current filters.`;
+  $("#toast").textContent = `Exported ${comments.length} ${isDemo ? "sample " : syntheticService ? "synthetic " : ""}comments with the current filters.`;
   $("#toast").hidden = false;
   window.clearTimeout(toastTimeout);
   toastTimeout = window.setTimeout(() => { $("#toast").hidden = true; }, 3500);
@@ -224,7 +227,7 @@ $("#video-form").addEventListener("submit", async event => {
   const url = new URL(location.href);
   url.searchParams.set("video", video);
   history.replaceState(null, "", url);
-  feedback.textContent = `Selected: ${video}. The dashboard still shows handwritten sample comments.`;
+  feedback.textContent = `Valid video link: ${video}. Live comments are not connected on this page. The dashboard shows the same handwritten sample comments.`;
 });
 
 for (const link of document.querySelectorAll(".nav-link")) {
@@ -268,6 +271,17 @@ const PHASE_COPY = {
   failed: "This analysis could not finish. You may remove it or start another.", expired: "This result has expired. Start a new analysis.",
   deleted: "This analysis was removed from your history.", paused: "Progress checks are paused while you explore the demo.",
 };
+const FIXTURE_PHASE_COPY = {
+  "signed-out": "Use the fixture account to simulate a test run.", ready: "Paste a video link to test the request flow with fixed comments.",
+  "signing-in": "Activating the simulated account.", submitting: "Starting the simulated request…",
+  QUEUED: "The test run is queued.", FETCHING: "Simulating comment fetching; no comments are being downloaded.",
+  INFERENCING: "Loading synthetic sentiment scores; the model is not running.", SAVING: "Preparing the synthetic result…",
+  "loading-result": "Checking the synthetic result…", complete: "The fixed test result is ready.",
+  partial: "The partial-result test scenario is ready.", empty: "The empty-result test scenario is ready.",
+  "all-skipped": "The all-skipped test scenario is ready.", failed: "The failure test scenario completed.",
+  expired: "The synthetic result expired. Simulate another test run.", deleted: "The synthetic result was removed.",
+  paused: "The test run is paused while you explore the demo.",
+};
 
 function renderData() {initializeSummary(); renderTrend(); clearFilters();}
 function clearDetail() {
@@ -276,32 +290,40 @@ function clearDetail() {
   for (const id of ["#dialog-author", "#dialog-text", "#dialog-meta", "#dialog-note"]) $(id).replaceChildren();
 }
 function renderConnection(status = controller?.state) {
-  $("#mode-badge").textContent = isDemo ? "Demo data" : "Analysis workspace";
-  $("#sidebar-status").textContent = isDemo ? "Demo preview" : "Connected service";
-  $("#demo-banner").hidden = !isDemo;
+  const fixture = !isDemo && syntheticService;
+  $("#mode-badge").textContent = isDemo ? "Demo data" : fixture ? "Synthetic test data" : "Analysis workspace";
+  $("#sidebar-status").textContent = isDemo ? "Demo preview" : fixture ? "Synthetic fixture" : "Connected service";
+  $("#demo-banner").hidden = !isDemo && !fixture;
+  $("#demo-banner-copy").textContent = fixture ? "Synthetic test mode. The comments, counts, account and model scores are fixed test data. No YouTube or AWS service is called." : "You're viewing a design preview. Charts and comments use handwritten sample data. Live comments are not connected on this page.";
+  $("#video-mode-note").textContent = isDemo ? "Live comments are not connected on this page. Changing the link does not change the handwritten sample comments." : fixture ? "Changing the URL only tests the request flow. This preview always uses fixed synthetic comments and cannot load comments from that video." : "Analyze a bounded sample of public comments from the video you submit.";
   $("#connection-panel").hidden = !controller;
   $("#use-service").hidden = !controller || !isDemo;
+  $("#use-service").textContent = syntheticService ? "Open fixture workspace" : "Use analysis service";
   $("#show-demo").hidden = isDemo;
   $("#sign-in").hidden = isDemo || Boolean(status?.signedIn);
   $("#sign-out").hidden = isDemo || !status?.signedIn;
+  $("#sign-in").textContent = syntheticService ? "Use fixture account" : "Sign in";
+  $("#sign-out").textContent = syntheticService ? "End fixture session" : "Sign out";
   $("#policy-consent").hidden = isDemo;
   $("#sign-in").disabled = Boolean(status?.busy) || !$("#accept-policy").checked;
-  $("#submit-video").textContent = isDemo ? "Preview video" : "Analyze comments";
+  $("#submit-video").textContent = isDemo ? "Check video link" : fixture ? "Simulate test run" : "Analyze comments";
   $("#submit-video").disabled = !isDemo && (status?.busy || !status?.signedIn || !$("#accept-policy").checked);
-  $("#connection-title").textContent = isDemo ? "Demo workspace" : status?.signedIn ? "Signed in" : "Your analysis workspace";
-  $("#connection-copy").textContent = isDemo ? "Explore sample data, or switch to your configured analysis service." : "Sign-in uses your Comment Lens account. Signing out clears this extension session; it does not close your account.";
+  $("#connection-title").textContent = isDemo ? "Demo workspace" : fixture ? status?.signedIn ? "Fixture account active" : "Synthetic test workspace" : status?.signedIn ? "Signed in" : "Your analysis workspace";
+  $("#connection-copy").textContent = fixture ? "This account and all results are simulated locally. No real sign-in or comment fetching takes place." : isDemo ? "Explore sample data, or switch to your configured analysis service." : "Sign-in uses your Comment Lens account. Signing out clears this extension session; it does not close your account.";
   $("#job-status").hidden = isDemo;
   $("#analysis-content").hidden = !isDemo && !status?.result;
   $("#export").disabled = !isDemo && !status?.result;
   $("#remove-analysis").hidden = isDemo || !status?.analysis;
+  $("#remove-analysis").textContent = syntheticService ? "Remove test run" : "Remove from my history";
   $("#remove-analysis").disabled = status?.phase === "submitting" || status?.phase === "loading-result";
   $("#retry-analysis").hidden = isDemo || !status?.error?.retryable || !status?.signedIn || status.analysis?.state === "FAILED";
   if (isDemo || !status) return;
   const error = status.error;
   const wait = error?.resetAt ? ` Available after ${fullDate(error.resetAt)}.` : error?.retryAfterSeconds ? ` Wait at least ${error.retryAfterSeconds} seconds.` : "";
-  $("#job-message").textContent = error ? (ERROR_COPY[error.code] || "This action could not complete. Please try again.") + wait : PHASE_COPY[status.phase] || "Preparing your analysis…";
+  const message = error ? `${fixture ? "Simulated error: " : ""}${(ERROR_COPY[error.code] || "This action could not complete. Please try again.") + wait}` : (fixture ? FIXTURE_PHASE_COPY : PHASE_COPY)[status.phase] || (fixture ? "Preparing the synthetic test…" : "Preparing your analysis…");
+  $("#job-message").textContent = `${fixture ? "Synthetic test: " : ""}${message}`;
   const progress = status.analysis?.progress;
-  $("#job-progress").textContent = progress ? `${progress.fetched} fetched · ${progress.analyzed} analyzed · ${progress.skipped} skipped` : "";
+  $("#job-progress").textContent = progress ? `${fixture ? "Simulated counts: " : ""}${progress.fetched} fetched · ${progress.analyzed} analyzed · ${progress.skipped} skipped` : "";
   $("#job-status").classList.toggle("error", Boolean(error));
   $("#job-status").setAttribute("aria-busy", String(status.busy));
   if (status.result && renderedResult !== status.result) {
@@ -309,7 +331,7 @@ function renderConnection(status = controller?.state) {
   }
   if (status.modelDetails && status.result) {
     const evaluation = status.modelDetails.evaluation;
-    $("#model-quality").textContent = `This model's held-out accuracy: ${percent(evaluation.test_accuracy)} · Macro F1: ${percent(evaluation.test_macro_f1)} · ${evaluation.test_rows.toLocaleString()} comments. ${evaluation.labels_human_confirmed ? "Labels reviewed." : "Dataset labels are not human-confirmed."} These are dataset measures, not this video's accuracy.`;
+    $("#model-quality").textContent = fixture ? "Model scores and evaluation numbers in this test are synthetic." : `This model's held-out accuracy: ${percent(evaluation.test_accuracy)} · Macro F1: ${percent(evaluation.test_macro_f1)} · ${evaluation.test_rows.toLocaleString()} comments. ${evaluation.labels_human_confirmed ? "Labels reviewed." : "Dataset labels are not human-confirmed."} These are dataset measures, not this video's accuracy.`;
   }
   if (!status.result && renderedResult) {
     clearDetail();
@@ -328,8 +350,16 @@ export function showUnavailable() {
   $("#video-feedback").hidden = false;
   $("#video-feedback").textContent = "The analysis service settings could not be loaded. Demo mode is available.";
 }
-export function configureService(nextController, adapter) {
+export function configureService(nextController, adapter, {synthetic = false} = {}) {
+  syntheticService = synthetic;
   controller = nextController; resultAdapter = adapter; controller.onChange = renderConnection; controller.suspended = true;
+  if (syntheticService) {
+    $("#remove-title").textContent = "Remove this test run?";
+    $("#remove-dialog > p").textContent = "This removes the synthetic result from this preview.";
+    $("#confirm-remove").textContent = "Remove test run";
+    $("#cancel-remove").textContent = "Keep test run";
+    $("#retry-analysis").textContent = "Retry test run";
+  }
   $("#accept-policy").addEventListener("change", () => renderConnection());
   $("#sign-in").addEventListener("click", () => {if ($("#accept-policy").checked) controller.signIn();});
   $("#sign-out").addEventListener("click", () => controller.signOut());

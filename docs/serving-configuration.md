@@ -1202,13 +1202,25 @@ The fixture preview builder creates a separate, labeled developer artifact:
 ```
 
 Open `http://127.0.0.1:8766/dashboard.html?scenario=success`, accept the test
-policy checkbox, choose **Use fixture account**, then **Analyze comments**.
+policy checkbox, choose **Use fixture account**, then **Simulate test run**.
 The persistent developer-fixture banner states that there are no AWS or
 YouTube calls. The scenario selector also offers partial, empty, all-skipped,
 quota, busy, failed and expired responses. Normal polling advances the queued
 examples, and the expiration case clears after 15 seconds. `--output` changes
 the fixture destination; the builder does not launch the server. Fixture
 modules are excluded from ordinary extension bundles and public Pages output.
+
+This page has one fixed set of synthetic comments. Changing the video link
+tests URL handling and result association; it cannot load that video's comments.
+The fixture workspace, result details and comment totals remain labeled as
+synthetic. The public demo's **Check video link** action only validates a link
+and also keeps its handwritten comments. Neither page is a live backend.
+
+Real comments require the configured API, authenticated account flow and
+YouTube worker. The checked-in connection is disabled, the serving resources
+are not deployed, and the local fixture server is only a static file server.
+Rebuilding the preview or changing its default video ID does not connect those
+services. Test results from this preview must not be reported as a live fetch.
 
 Run the automated checks from the repository root:
 

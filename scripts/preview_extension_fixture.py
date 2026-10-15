@@ -105,7 +105,7 @@ def main(argv=None):
     print(f"Built developer-only fixture preview in {output}")
     print(f'python -m http.server 8766 --bind 127.0.0.1 --directory "{output}"')
     print("Open http://127.0.0.1:8766/dashboard.html?scenario=success")
-    print("Accept the test policy checkbox, choose Use fixture account, then Analyze comments.")
+    print("Accept the test policy checkbox, choose Use fixture account, then Simulate test run.")
     print("All states and data are synthetic. No AWS service or YouTube API is called.")
     return 0
 

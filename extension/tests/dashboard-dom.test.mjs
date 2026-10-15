@@ -14,7 +14,7 @@ async function until(check) {
   for (let attempt = 0; attempt < 60; attempt++) {if (check()) return; await new Promise(resolve => setImmediate(resolve));}
   assert.fail("The fixture interface did not reach the expected state");
 }
-async function setup(t, {scenario = "success", error = null, useTransport = false} = {}) {
+async function setup(t, {scenario = "success", error = null, useTransport = false, synthetic = false} = {}) {
   const dom = new JSDOM(markup, {url: "https://fixture.example/dashboard.html", pretendToBeVisual: true});
   const {window} = dom;
   const originals = Object.fromEntries(["document", "window", "location", "history"].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -59,7 +59,7 @@ async function setup(t, {scenario = "success", error = null, useTransport = fals
     }});
   }
   const controller = new JobController({api, auth, now: () => now, isHidden: () => false});
-  app.configureService(controller, resultToView);
+  app.configureService(controller, resultToView, {synthetic});
   await controller.initialize();
   const $ = selector => window.document.querySelector(selector);
   async function signIn() {
@@ -96,6 +96,46 @@ test("Demo mode keeps its totals and filters, while consent gates service action
   f.$("#video-url").value = FIXTURE_VIDEO_URL;
   f.$("#video-form").dispatchEvent(new f.window.Event("submit", {cancelable: true}));
   assert.equal(f.calls.submit, 0);
+});
+
+test("Checking a demo link explicitly explains that its comments cannot change", async t => {
+  const f = await setup(t);
+  const rows = f.$("#comment-rows").textContent;
+  assert.equal(f.$("#submit-video").textContent, "Check video link");
+  assert.ok(f.$("#video-mode-note").textContent.includes("Live comments are not connected"));
+  for (const video of [FIXTURE_VIDEO_INPUT_URL, "https://www.youtube.com/watch?v=BnMm_WGV9Rw"]) {
+    f.$("#video-url").value = video;
+    f.$("#video-form").dispatchEvent(new f.window.Event("submit", {cancelable: true}));
+    assert.ok(f.$("#video-feedback").textContent.includes("same handwritten sample comments"));
+    assert.equal(f.$("#comment-rows").textContent, rows);
+  }
+  assert.equal(f.calls.submit, 0);
+});
+
+test("Fixture runs keep synthetic labels on results, counts, account controls and comment details", async t => {
+  const f = await setup(t, {synthetic: true});
+  await f.signIn();
+  assert.equal(f.$("#submit-video").textContent, "Simulate test run");
+  assert.equal(f.$("#connection-title").textContent, "Fixture account active");
+  assert.ok(f.$("#video-mode-note").textContent.includes("always uses fixed synthetic comments"));
+  assert.equal(f.$("#demo-banner").hidden, false);
+  await f.submit();
+  await until(() => Boolean(f.controller.state.modelDetails));
+  assert.equal(f.$("#mode-badge").textContent, "Synthetic test data");
+  assert.equal(f.$("#sidebar-status").textContent, "Synthetic fixture");
+  assert.equal(f.$("#video-eyebrow").textContent, "SYNTHETIC FIXTURE RESULTS");
+  assert.equal(f.$("#video-comment-total").textContent, "Synthetic value: 125");
+  assert.equal(f.$("#analyzed-stat-label").textContent, "Test comments analyzed");
+  assert.ok(f.$("#coverage-note").textContent.includes("not the linked video"));
+  assert.ok(f.$("#job-progress").textContent.startsWith("Simulated counts:"));
+  assert.equal(f.$("#job-message").textContent, "Synthetic test: The fixed test result is ready.");
+  assert.ok(f.$("#model-quality").textContent.includes("synthetic"));
+  assert.equal(f.$("#demo-banner").hidden, false);
+  f.$("#comment-rows button").click();
+  assert.ok(f.$("#dialog-note").textContent.includes("unrelated to the linked video"));
+  f.$("#show-demo").click();
+  assert.equal(f.$("#submit-video").textContent, "Check video link");
+  assert.ok(f.$("#demo-banner-copy").textContent.includes("handwritten sample data"));
 });
 
 test("Connected results render one verified sample; filters and details make no extra requests", async t => {

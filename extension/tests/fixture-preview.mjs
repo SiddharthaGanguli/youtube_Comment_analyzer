@@ -82,9 +82,7 @@ const api = {
 };
 
 const controller = new JobController({api, auth});
-configureService(controller, resultToView);
-document.querySelector("#sign-in").textContent = "Use fixture account";
-document.querySelector("#use-service").textContent = "Open fixture workspace";
+configureService(controller, resultToView, {synthetic: true});
 document.querySelector("#video-url").value = FIXTURE_VIDEO_INPUT_URL;
 document.title = `FIXTURE TEST (${scenario}) | Comment Lens`;
 await controller.initialize();
