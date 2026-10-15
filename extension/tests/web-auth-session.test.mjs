@@ -39,9 +39,10 @@ function setup({storage = storageFixture(), href = config.redirectUri, fetchImpl
 }
 
 async function until(predicate) {
-  for (let attempt = 0; attempt < 100; attempt++) {
+  const deadline = performance.now() + 2000;
+  while (performance.now() < deadline) {
     if (predicate()) return;
-    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => globalThis.setTimeout(resolve, 2));
   }
   throw new Error("Fixture operation did not reach expected point");
 }

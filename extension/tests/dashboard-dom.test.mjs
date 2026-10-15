@@ -11,7 +11,8 @@ import {makeFixtureResult, makeFixtureAnalysis, makeFixtureModelDetails, FIXTURE
 const markup = await readFile(new URL("../dashboard.html", import.meta.url), "utf8");
 let instance = 0;
 async function until(check) {
-  for (let attempt = 0; attempt < 60; attempt++) {if (check()) return; await new Promise(resolve => setImmediate(resolve));}
+  const deadline = performance.now() + 2000;
+  while (performance.now() < deadline) {if (check()) return; await new Promise(resolve => globalThis.setTimeout(resolve, 2));}
   assert.fail("The fixture interface did not reach the expected state");
 }
 async function setup(t, {scenario = "success", error = null, useTransport = false, synthetic = false} = {}) {
