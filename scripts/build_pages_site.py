@@ -5,9 +5,11 @@ The generated module contains public URLs/IDs, never credentials or API keys.
 """
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -116,6 +118,23 @@ def write_bytes(target, data):
             temporary.unlink(missing_ok=True)
 
 
+def versioned_bootstrap(name, data, settings_revision):
+    """Change request URLs in staged files without changing source assets."""
+    if name == "dashboard.html":
+        pattern = rb'''(<script\b(?=[^>]*\btype\s*=\s*["']module["'])[^>]*\bsrc\s*=\s*)(["'])dashboard\.mjs\2'''
+        def replacement(match):
+            return match[1] + match[2] + b"dashboard.mjs?v=" + settings_revision + match[2]
+    elif name == "dashboard.mjs":
+        pattern = rb'''(\bimport\s*\(\s*)(["'])\./web-client-settings\.mjs\2(\s*\))'''
+        def replacement(match):
+            return match[1] + match[2] + b"./web-client-settings.mjs?v=" + settings_revision + match[2] + match[3]
+    else:
+        return data
+    if len(re.findall(pattern, data)) != 1:
+        raise ValueError(f"Expected exactly one website bootstrap reference in {name}")
+    return re.sub(pattern, replacement, data, count=1)
+
+
 def build_site(source=SOURCE, output=OUTPUT, settings=None, node_executable=None):
     source_root, output_root = ordinary(source), ordinary(output)
     if (source_root == output_root or output_root.is_relative_to(source_root)
@@ -128,13 +147,20 @@ def build_site(source=SOURCE, output=OUTPUT, settings=None, node_executable=None
         raise ValueError("The settings file must be outside the staging directory")
     checked_settings = public_settings(settings, source_root, node_executable)
     files = WEB_FILES + (CONNECTION_FILES if checked_settings["enabled"] else ())
+    module = ("// Generated public website metadata. Never put credentials in this file.\n"
+              f"export const webClientSettings = Object.freeze({json.dumps(checked_settings, sort_keys=True, ensure_ascii=True, allow_nan=False)});\n").encode("utf-8")
+    settings_revision = hashlib.sha256(module).hexdigest().encode("ascii")
 
     checked = []
     for name in files:
         path = ordinary(source_root / name)
         if not path.is_file() or not path.resolve().is_relative_to(source_root):
             raise ValueError(f"Missing or invalid static file: {name}")
-        checked.append((name, path))
+        # Validate both substitutions before touching a previous staged build.
+        # The settings revision changes both module-cache keys when deployment
+        # metadata changes, including a switch between demo and connected mode.
+        data = versioned_bootstrap(name, path.read_bytes(), settings_revision)
+        checked.append((name, data))
 
     allowed = set(WEB_FILES) | set(CONNECTION_FILES) | {GENERATED_SETTINGS, ".nojekyll"}
     allowed_directories = {parent.as_posix() for name in allowed for parent in Path(name).parents if parent != Path(".")}
@@ -160,13 +186,11 @@ def build_site(source=SOURCE, output=OUTPUT, settings=None, node_executable=None
     # never deleted, copied, or included in the published artifact.
     for name in set(CONNECTION_FILES) - set(files):
         (output_root / name).unlink(missing_ok=True)
-    for name, path in checked:
+    for name, data in checked:
         target = output_root / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        write_bytes(target, path.read_bytes())
-    module = ("// Generated public website metadata. Never put credentials in this file.\n"
-              f"export const webClientSettings = Object.freeze({json.dumps(checked_settings, ensure_ascii=True, allow_nan=False)});\n")
-    write_bytes(output_root / GENERATED_SETTINGS, module.encode("utf-8"))
+        write_bytes(target, data)
+    write_bytes(output_root / GENERATED_SETTINGS, module)
     write_bytes(output_root / ".nojekyll", b"")
     print(f"Staged website ({'configured service' if checked_settings['enabled'] else 'demo only'}) in {output_root}")
     return output_root

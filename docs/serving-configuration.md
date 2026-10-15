@@ -1396,6 +1396,9 @@ An enabled build includes the website auth/client/controller modules from an
 explicit allowlist. Extension session storage, tests, fixtures, backend code,
 credential files, data and model artifacts stay excluded. Returning to disabled
 settings removes previously allowlisted connection modules from the output.
+Staged dashboard and settings imports include a content hash of the validated
+public configuration. Publishing changed endpoints or enabling the connection
+therefore uses new browser cache keys; source extension files are unchanged.
 
 For local testing, use the generated local callback settings from the release:
 

@@ -1,10 +1,12 @@
 """Publish only static website assets and validated public connection metadata."""
 
 import contextlib
+import hashlib
 import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -30,6 +32,10 @@ class PagesSiteTests(unittest.TestCase):
             path.write_text("static fixture: " + name, encoding="utf-8")
         for name in ("web-client-config.mjs", "client-config.mjs"):
             (self.source / name).write_bytes((ROOT / "extension" / name).read_bytes())
+        (self.source / "dashboard.html").write_text(
+            '<!doctype html><script type="module" src="dashboard.mjs"></script>', encoding="utf-8")
+        (self.source / "dashboard.mjs").write_text(
+            'const {webClientSettings} = await import("./web-client-settings.mjs");', encoding="utf-8")
         # Poisoned source settings must never override the builder's explicit
         # disabled default or its validated public JSON input.
         (self.source / GENERATED_SETTINGS).write_text("export const webClientSettings = {apiKey:'" + PRIVATE + "'};", encoding="utf-8")
@@ -50,6 +56,15 @@ class PagesSiteTests(unittest.TestCase):
 
     def files(self):
         return {path.relative_to(self.output).as_posix() for path in self.output.rglob("*") if path.is_file()}
+
+    def bootstrap_revision(self):
+        html = (self.output / "dashboard.html").read_text(encoding="utf-8")
+        bootstrap = (self.output / "dashboard.mjs").read_text(encoding="utf-8")
+        html_revision = re.search(r'dashboard\.mjs\?v=([0-9a-f]{64})', html).group(1)
+        settings_revision = re.search(r'web-client-settings\.mjs\?v=([0-9a-f]{64})', bootstrap).group(1)
+        self.assertEqual(html_revision, settings_revision)
+        self.assertEqual(settings_revision, hashlib.sha256((self.output / GENERATED_SETTINGS).read_bytes()).hexdigest())
+        return settings_revision
 
     def test_default_demo_has_no_authentication_or_backend_assets_and_ignores_source_settings(self):
         output = build_site(self.source, self.output)
@@ -74,8 +89,50 @@ class PagesSiteTests(unittest.TestCase):
     @unittest.skipUnless(NODE, "Node is required for enabled public settings")
     def test_returning_to_demo_removes_only_allowlisted_connection_files(self):
         build_site(self.source, self.output, self.settings())
+        enabled_revision = self.bootstrap_revision()
         build_site(self.source, self.output)
         self.assertEqual(self.files(), set(WEB_FILES) | {GENERATED_SETTINGS, ".nojekyll"})
+        self.assertNotEqual(enabled_revision, self.bootstrap_revision())
+
+    @unittest.skipUnless(NODE, "Node is required for enabled public settings")
+    def test_connection_changes_version_both_bootstrap_requests_without_changing_source(self):
+        source_html = (self.source / "dashboard.html").read_bytes()
+        source_bootstrap = (self.source / "dashboard.mjs").read_bytes()
+        build_site(self.source, self.output)
+        demo_revision = self.bootstrap_revision()
+        build_site(self.source, self.output, self.settings())
+        first_revision = self.bootstrap_revision()
+        self.assertNotEqual(demo_revision, first_revision)
+        build_site(self.source, self.output, self.settings(clientId="replacementclient2"))
+        self.assertNotEqual(first_revision, self.bootstrap_revision())
+        self.assertEqual((self.source / "dashboard.html").read_bytes(), source_html)
+        self.assertEqual((self.source / "dashboard.mjs").read_bytes(), source_bootstrap)
+        self.assertEqual(self.files(), set(WEB_FILES) | set(CONNECTION_FILES) | {GENERATED_SETTINGS, ".nojekyll"})
+
+    @unittest.skipUnless(NODE, "Node is required for enabled public settings")
+    def test_equivalent_settings_produce_stable_module_cache_keys(self):
+        settings = self.settings()
+        build_site(self.source, self.output, settings)
+        revision = self.bootstrap_revision()
+        staged = {name: (self.output / name).read_bytes() for name in ("dashboard.html", "dashboard.mjs", GENERATED_SETTINGS)}
+        raw = json.loads(settings.read_text(encoding="utf-8"))
+        settings.write_text(json.dumps(dict(reversed(list(raw.items())))), encoding="utf-8")
+        build_site(self.source, self.output, settings)
+        self.assertEqual(self.bootstrap_revision(), revision)
+        for name, expected in staged.items():
+            self.assertEqual((self.output / name).read_bytes(), expected)
+
+    def test_missing_or_duplicate_bootstrap_markers_fail_before_writing_output(self):
+        for name, value in (("dashboard.html", '<script src="dashboard.mjs"></script>'),
+                            ("dashboard.mjs", 'import("./web-client-settings.mjs");import("./web-client-settings.mjs");')):
+            with self.subTest(asset=name):
+                path = self.source / name
+                original = path.read_bytes()
+                path.write_text(value, encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "bootstrap reference"):
+                    build_site(self.source, self.output)
+                self.assertFalse(self.output.exists())
+                path.write_bytes(original)
 
     def test_unknown_existing_files_are_preserved_and_never_published(self):
         self.output.mkdir()
