@@ -15,7 +15,7 @@ async function until(check) {
   while (performance.now() < deadline) {if (check()) return; await new Promise(resolve => globalThis.setTimeout(resolve, 2));}
   assert.fail("The fixture interface did not reach the expected state");
 }
-async function setup(t, {scenario = "success", error = null, useTransport = false, synthetic = false} = {}) {
+async function setup(t, {scenario = "success", error = null, useTransport = false, synthetic = false, startInService = false} = {}) {
   const dom = new JSDOM(markup, {url: "https://fixture.example/dashboard.html", pretendToBeVisual: true});
   const {window} = dom;
   const originals = Object.fromEntries(["document", "window", "location", "history"].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -60,7 +60,7 @@ async function setup(t, {scenario = "success", error = null, useTransport = fals
     }});
   }
   const controller = new JobController({api, auth, now: () => now, isHidden: () => false});
-  app.configureService(controller, resultToView, {synthetic});
+  app.configureService(controller, resultToView, {synthetic, startInService});
   await controller.initialize();
   const $ = selector => window.document.querySelector(selector);
   async function signIn() {
@@ -97,6 +97,16 @@ test("Demo mode keeps its totals and filters, while consent gates service action
   f.$("#video-url").value = FIXTURE_VIDEO_URL;
   f.$("#video-form").dispatchEvent(new f.window.Event("submit", {cancelable: true}));
   assert.equal(f.calls.submit, 0);
+});
+
+test("A connected workspace starts with zero comments and restores demo counts only on request", async t => {
+  const f = await setup(t, {startInService: true});
+  assert.equal(f.$("#mode-badge").textContent, "Analysis workspace");
+  assert.equal(f.$("#analysis-content").hidden, true);
+  assert.equal(f.$("#nav-count").textContent, "0");
+  f.$("#show-demo").click();
+  assert.equal(f.$("#mode-badge").textContent, "Demo data");
+  assert.equal(f.$("#nav-count").textContent, "24");
 });
 
 test("Checking a demo link explicitly explains that its comments cannot change", async t => {
@@ -190,6 +200,7 @@ test("The supplied playlist/radio link reaches the API as one video and renders 
 
 test("Signing out clears result rows, comment dialogs and export access", async t => {
   const f = await setup(t); await f.signIn(); await f.submit();
+  assert.equal(f.$("#nav-count").textContent, String(f.result.comments.length));
   f.$("#comment-rows button").click();
   f.$("#sign-out").click();
   await until(() => f.controller.state.phase === "signed-out");
@@ -199,6 +210,9 @@ test("Signing out clears result rows, comment dialogs and export access", async 
   assert.equal(f.$("#dialog-meta").textContent, "");
   assert.equal(f.$("#comment-dialog").open, false);
   assert.equal(f.$("#export").disabled, true);
+  assert.equal(f.$("#nav-count").textContent, "0");
+  f.$("#show-demo").click();
+  assert.equal(f.$("#nav-count").textContent, "24");
 });
 
 test("Expiry clears owned results even when the shared result has a later expiry", async t => {

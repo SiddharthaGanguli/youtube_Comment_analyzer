@@ -1,7 +1,6 @@
 """Publish only static website assets and validated public connection metadata."""
 
 import contextlib
-import hashlib
 import io
 import json
 import os
@@ -35,6 +34,7 @@ class PagesSiteTests(unittest.TestCase):
         (self.source / "dashboard.html").write_text(
             '<!doctype html><script type="module" src="dashboard.mjs"></script>', encoding="utf-8")
         (self.source / "dashboard.mjs").write_text(
+            'import {configureService} from "./dashboard-app.mjs";\n'
             'const {webClientSettings} = await import("./web-client-settings.mjs");', encoding="utf-8")
         # Poisoned source settings must never override the builder's explicit
         # disabled default or its validated public JSON input.
@@ -63,7 +63,7 @@ class PagesSiteTests(unittest.TestCase):
         html_revision = re.search(r'dashboard\.mjs\?v=([0-9a-f]{64})', html).group(1)
         settings_revision = re.search(r'web-client-settings\.mjs\?v=([0-9a-f]{64})', bootstrap).group(1)
         self.assertEqual(html_revision, settings_revision)
-        self.assertEqual(settings_revision, hashlib.sha256((self.output / GENERATED_SETTINGS).read_bytes()).hexdigest())
+        self.assertIn(f'"./dashboard-app.mjs?v={html_revision}"', bootstrap)
         return settings_revision
 
     def test_default_demo_has_no_authentication_or_backend_assets_and_ignores_source_settings(self):
@@ -121,6 +121,82 @@ class PagesSiteTests(unittest.TestCase):
         self.assertEqual(self.bootstrap_revision(), revision)
         for name, expected in staged.items():
             self.assertEqual((self.output / name).read_bytes(), expected)
+
+    def test_application_changes_invalidate_main_and_imported_module_urls(self):
+        bootstrap = (self.source / "dashboard.mjs").read_bytes()
+        build_site(self.source, self.output)
+        first_revision = self.bootstrap_revision()
+        module = self.source / "dashboard-app.mjs"
+        module.write_bytes(module.read_bytes() + b"\n// Clear the connected workspace count.\n")
+        build_site(self.source, self.output)
+        next_revision = self.bootstrap_revision()
+        self.assertNotEqual(first_revision, next_revision)
+        staged = (self.output / "dashboard.mjs").read_text(encoding="utf-8")
+        self.assertIn(f'from "./dashboard-app.mjs?v={next_revision}"', staged)
+        self.assertNotIn(first_revision, staged)
+        self.assertEqual((self.source / "dashboard.mjs").read_bytes(), bootstrap)
+
+    @unittest.skipUnless(NODE, "Node is required for enabled public settings")
+    def test_all_transitive_published_module_imports_share_the_revision(self):
+        app = ('import {demo} from "./demo-data.mjs";\n'
+               "import './lib.mjs';\n"
+               'export {summarize} from "./lib.mjs";\n'
+               'const dynamic = import("./analysis-client.mjs");\n'
+               'const ordinaryString = "./lib.mjs";\n'
+               'const extensionOnly = import("./auth-session.mjs");\n')
+        (self.source / "dashboard-app.mjs").write_text(app, encoding="utf-8")
+        (self.source / "analysis-client.mjs").write_text(
+            'import {validateResult} from "./result-model.mjs";\n', encoding="utf-8")
+        (self.source / "result-model.mjs").write_text(
+            'export {JobController} from "./job-controller.mjs";\n', encoding="utf-8")
+        build_site(self.source, self.output, self.settings())
+        revision = self.bootstrap_revision()
+        for name, targets in {
+            "dashboard-app.mjs": ("demo-data.mjs", "lib.mjs", "analysis-client.mjs"),
+            "analysis-client.mjs": ("result-model.mjs",),
+            "result-model.mjs": ("job-controller.mjs",),
+            "web-client-config.mjs": ("client-config.mjs",),
+        }.items():
+            staged = (self.output / name).read_text(encoding="utf-8")
+            for target in targets:
+                self.assertIn(f"./{target}?v={revision}", staged)
+        staged_app = (self.output / "dashboard-app.mjs").read_text(encoding="utf-8")
+        self.assertIn(f"import './lib.mjs?v={revision}'", staged_app)
+        self.assertIn(f'export {{summarize}} from "./lib.mjs?v={revision}"', staged_app)
+        self.assertIn('const ordinaryString = "./lib.mjs";', staged_app)
+        self.assertIn('import("./auth-session.mjs")', staged_app)
+        self.assertNotIn("auth-session.mjs?v=", staged_app)
+        self.assertEqual((self.source / "dashboard-app.mjs").read_text(encoding="utf-8"), app)
+
+        # Disabled mode never stages or versions connection-only assets.
+        build_site(self.source, self.output)
+        demo_revision = self.bootstrap_revision()
+        self.assertNotEqual(revision, demo_revision)
+        demo_app = (self.output / "dashboard-app.mjs").read_text(encoding="utf-8")
+        self.assertIn('import("./analysis-client.mjs")', demo_app)
+        self.assertNotIn("analysis-client.mjs?v=", demo_app)
+        self.assertEqual(self.files(), set(WEB_FILES) | {GENERATED_SETTINGS, ".nojekyll"})
+
+    @unittest.skipUnless(NODE, "Node is required for enabled public settings")
+    def test_checked_in_public_module_graph_has_no_unversioned_published_imports(self):
+        for name in (*WEB_FILES, *CONNECTION_FILES):
+            if name.endswith(".mjs"):
+                (self.source / name).write_bytes((ROOT / "extension" / name).read_bytes())
+        build_site(self.source, self.output, self.settings())
+        revision = self.bootstrap_revision()
+        published_modules = {name for name in self.files() if name.endswith(".mjs")}
+        checked_references = 0
+        for name in published_modules:
+            staged = (self.output / name).read_text(encoding="utf-8")
+            # These known source files use plain ./module.mjs literals for all
+            # imports. Read them independently of the builder's import pattern.
+            for target, version in re.findall(r'''["'](\./[^'"\r\n?#]+\.mjs)(?:\?v=([0-9a-f]{64}))?["']''', staged):
+                if target[2:] in published_modules:
+                    self.assertEqual(version, revision, f"{name} -> {target}")
+                    checked_references += 1
+                else:
+                    self.assertEqual(version, "", f"Unpublished module: {target}")
+        self.assertGreaterEqual(checked_references, 15)
 
     def test_missing_or_duplicate_bootstrap_markers_fail_before_writing_output(self):
         for name, value in (("dashboard.html", '<script src="dashboard.mjs"></script>'),

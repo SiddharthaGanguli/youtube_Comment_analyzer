@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import posixpath
 import re
 import shutil
 import subprocess
@@ -118,21 +119,44 @@ def write_bytes(target, data):
             temporary.unlink(missing_ok=True)
 
 
-def versioned_bootstrap(name, data, settings_revision):
-    """Change request URLs in staged files without changing source assets."""
+def module_revision(module, source_files):
+    """Fingerprint public settings and the original, published JavaScript."""
+    digest = hashlib.sha256()
+    modules = [(GENERATED_SETTINGS, module),
+               *((name, data) for name, data in source_files if name.endswith(".mjs"))]
+    for name, data in sorted(modules):
+        digest.update(name.encode("utf-8") + b"\0")
+        digest.update(len(data).to_bytes(8, "big"))
+        digest.update(data)
+    return digest.hexdigest().encode("ascii")
+
+
+def versioned_bootstrap(name, data, revision, public_modules):
+    """Version this site's literal module imports, preserving source assets.
+
+    This small read-graph pattern covers the checked-in import/from/dynamic
+    import forms, rather than attempting to parse arbitrary JavaScript.
+    """
     if name == "dashboard.html":
         pattern = rb'''(<script\b(?=[^>]*\btype\s*=\s*["']module["'])[^>]*\bsrc\s*=\s*)(["'])dashboard\.mjs\2'''
         def replacement(match):
-            return match[1] + match[2] + b"dashboard.mjs?v=" + settings_revision + match[2]
+            return match[1] + match[2] + b"dashboard.mjs?v=" + revision + match[2]
+        if len(re.findall(pattern, data)) != 1:
+            raise ValueError(f"Expected exactly one website bootstrap reference in {name}")
+        return re.sub(pattern, replacement, data, count=1)
     elif name == "dashboard.mjs":
         pattern = rb'''(\bimport\s*\(\s*)(["'])\./web-client-settings\.mjs\2(\s*\))'''
-        def replacement(match):
-            return match[1] + match[2] + b"./web-client-settings.mjs?v=" + settings_revision + match[2] + match[3]
-    else:
+        if len(re.findall(pattern, data)) != 1:
+            raise ValueError(f"Expected exactly one website bootstrap reference in {name}")
+    if not name.endswith(".mjs"):
         return data
-    if len(re.findall(pattern, data)) != 1:
-        raise ValueError(f"Expected exactly one website bootstrap reference in {name}")
-    return re.sub(pattern, replacement, data, count=1)
+    pattern = rb'''(?P<prefix>\b(?:import|export)\s+(?:[^;'"`]*?\bfrom\s*)?|\bimport\s*\(\s*)(?P<quote>["'])(?P<target>\.{1,2}/[^'"\\\r\n?#]+\.mjs)(?P=quote)'''
+    def replacement(match):
+        target = posixpath.normpath(posixpath.join(posixpath.dirname(name), match["target"].decode("utf-8")))
+        if target not in public_modules:
+            return match[0]
+        return (match["prefix"] + match["quote"] + match["target"] + b"?v=" + revision + match["quote"])
+    return re.sub(pattern, replacement, data)
 
 
 def build_site(source=SOURCE, output=OUTPUT, settings=None, node_executable=None):
@@ -149,18 +173,18 @@ def build_site(source=SOURCE, output=OUTPUT, settings=None, node_executable=None
     files = WEB_FILES + (CONNECTION_FILES if checked_settings["enabled"] else ())
     module = ("// Generated public website metadata. Never put credentials in this file.\n"
               f"export const webClientSettings = Object.freeze({json.dumps(checked_settings, sort_keys=True, ensure_ascii=True, allow_nan=False)});\n").encode("utf-8")
-    settings_revision = hashlib.sha256(module).hexdigest().encode("ascii")
-
     checked = []
     for name in files:
         path = ordinary(source_root / name)
         if not path.is_file() or not path.resolve().is_relative_to(source_root):
             raise ValueError(f"Missing or invalid static file: {name}")
-        # Validate both substitutions before touching a previous staged build.
-        # The settings revision changes both module-cache keys when deployment
-        # metadata changes, including a switch between demo and connected mode.
-        data = versioned_bootstrap(name, path.read_bytes(), settings_revision)
-        checked.append((name, data))
+        checked.append((name, path.read_bytes()))
+    revision = module_revision(module, checked)
+    public_modules = {name for name in files if name.endswith(".mjs")} | {GENERATED_SETTINGS}
+    # Check both bootstrap markers and rewrite the complete published module
+    # graph before touching a previous build. Every module uses the same version
+    # when either public connection settings or any JavaScript source changes.
+    checked = [(name, versioned_bootstrap(name, data, revision, public_modules)) for name, data in checked]
 
     allowed = set(WEB_FILES) | set(CONNECTION_FILES) | {GENERATED_SETTINGS, ".nojekyll"}
     allowed_directories = {parent.as_posix() for name in allowed for parent in Path(name).parents if parent != Path(".")}

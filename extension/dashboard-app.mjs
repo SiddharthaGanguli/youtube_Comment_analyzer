@@ -314,6 +314,7 @@ function renderConnection(status = controller?.state) {
   $("#connection-copy").textContent = fixture ? "This account and all results are simulated locally. No real sign-in or comment fetching takes place." : isDemo ? "Explore sample data, or switch to your configured analysis service." : "Sign in with your Comment Lens account. Signing out clears this session; it does not close your account.";
   $("#job-status").hidden = isDemo;
   $("#analysis-content").hidden = !isDemo && !status?.result;
+  if (!isDemo && !status?.result) $("#nav-count").textContent = "0";
   $("#export").disabled = !isDemo && !status?.result;
   $("#remove-analysis").hidden = isDemo || !status?.analysis;
   $("#remove-analysis").textContent = syntheticService ? "Remove test run" : "Remove from my history";

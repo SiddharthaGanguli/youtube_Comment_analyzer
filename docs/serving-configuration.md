@@ -1396,9 +1396,9 @@ An enabled build includes the website auth/client/controller modules from an
 explicit allowlist. Extension session storage, tests, fixtures, backend code,
 credential files, data and model artifacts stay excluded. Returning to disabled
 settings removes previously allowlisted connection modules from the output.
-Staged dashboard and settings imports include a content hash of the validated
-public configuration. Publishing changed endpoints or enabling the connection
-therefore uses new browser cache keys; source extension files are unchanged.
+Staged dashboard and module imports include a content hash of the validated
+public configuration and published JavaScript. Changed settings or application
+code therefore use new browser cache keys; source extension files are unchanged.
 
 For local testing, use the generated local callback settings from the release:
 
@@ -1427,5 +1427,19 @@ user has completed sign-in or that live video analysis works.
 The stack uses the explicit shared development concurrency mode, with a
 two-worker queue cap. Live YouTube fetching and its queue mapping remain
 disabled pending the accepted analytics-use decision/reference. The real local
-website is staged in `artifacts/serving-web`; it must replace the older fixture
-server before the local URL uses this connection.
+website is running at `http://localhost:8766/dashboard.html`, using the
+registered localhost callback and an IPv6 loopback listener. On this machine,
+`127.0.0.1:8766` continues to serve the older synthetic fixture. Use the
+`localhost` URL for the connected service.
+
+This separate local build uses the generated public settings with
+`redirectUri` set to the already-registered localhost callback:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/build_pages_site.py --settings artifacts/serving-release-001/web-client.localhost.json --output artifacts/serving-web-localhost
+.\.venv\Scripts\python.exe -m http.server 8766 --bind ::1 --directory artifacts/serving-web-localhost
+```
+
+The browser check showed the connected workspace, unchecked policy consent,
+disabled sign-in before consent and zero comments. No account was created and
+no user sign-in or live YouTube request was performed.
