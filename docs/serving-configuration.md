@@ -1409,20 +1409,20 @@ For local testing, use the generated local callback settings from the release:
 
 Stop the older fixture HTTP server before starting this server on the same
 port. `artifacts/extension-fixture` is always synthetic; the website build above
-is the one that uses the real API. A real account sign-in and bounded live video
-sample still need verification after AWS permissions, deployment and the
-recorded live-use prerequisites are in place. No load/capacity result is implied
-by the connection tests.
+is the one that uses the real API. Website sign-in and an authenticated video
+submission are now verified, as recorded below. A bounded live video sample
+still awaits the accepted YouTube approval reference. No load/capacity result
+is implied by the connection tests.
 
-### Verified development deployment ? 15 October 2026
+### Verified development deployment - 15 October 2026
 
 `CommentLensServing-development` reached `UPDATE_COMPLETE`. The deployed Linux
 verifier passed all eight golden comments before the immutable model manifest
 was registered and promoted in DynamoDB. API liveness returned `200`, protected
 routes rejected missing and invalid bearer tokens, and CORS allowed only the
 configured website/local origins. Cognito signing keys, discovery metadata and
-the hosted login page were reachable. These checks do not establish that a
-user has completed sign-in or that live video analysis works.
+the hosted login page were reachable. A subsequent browser check completed
+real Cognito sign-in and the website's authorization-code/PKCE callback.
 
 The stack uses the explicit shared development concurrency mode, with a
 two-worker queue cap. Live YouTube fetching and its queue mapping remain
@@ -1440,6 +1440,17 @@ This separate local build uses the generated public settings with
 .\.venv\Scripts\python.exe -m http.server 8766 --bind ::1 --directory artifacts/serving-web-localhost
 ```
 
-The browser check showed the connected workspace, unchecked policy consent,
-disabled sign-in before consent and zero comments. No account was created and
-no user sign-in or live YouTube request was performed.
+The initial browser check showed the empty connected workspace and disabled
+sign-in before policy consent. After the user accepted both policies, real
+account sign-in succeeded. Submitting video `4z-oDk1utVo` reached
+`POST /v1/analyses` at `2026-10-15T08:10:32.190Z`; the AWS API access log
+confirmed HTTP `503`, and the dashboard displayed `LIVE_ANALYSIS_DISABLED` as
+"Live analysis is not available yet. You can still explore the demo."
+
+The user confirmed that the YouTube review is pending. Live processing and
+the worker queue mapping remain disabled. No video comments were fetched;
+the video's comment count and sentiment results remain unmeasured. This
+verifies website authentication and the disabled-live gate, not native Chrome
+extension authentication or end-to-end video analysis. The local screenshot
+and test receipt are in the ignored `artifacts/serving-release-001/` directory;
+neither contains passwords or tokens.

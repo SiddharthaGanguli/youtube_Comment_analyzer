@@ -5,8 +5,10 @@ This checklist turns that design into small reviewable steps. Steps 1 through 5 
 implemented and checked with offline fixtures. Step 6's adapter and worker
 integration are implemented and project quota is recorded; approval evidence and its live sample remain
 pending. Step 7's extension connection is implemented and checked with offline
-fixtures; native Chrome, deployed sign-in and live end-to-end checks remain
-pending. Step 8's development AWS stack, Linux model verification and initial
+fixtures; native Chrome identity/session checks remain pending. The connected
+website's real Cognito sign-in and authenticated video submission are verified;
+live end-to-end analysis awaits the accepted YouTube approval reference.
+Step 8's development AWS stack, Linux model verification and initial
 release promotion are complete; production capacity and rollout checks remain
 open. Finish and verify each step, then commit and push it before
 starting the next, following the
@@ -150,18 +152,21 @@ decision or case reference has been provided. Submission leaves
 - [x] Add API, PKCE/session, controller, DOM-fixture, result and bundle checks;
   keep credentials and live connection settings out of the default demo.
 - [ ] Repeat desktop/mobile, keyboard, accessibility and CSV checks with API fixtures.
-- [ ] Verify real Chrome identity/session APIs and deployed Cognito sign-in,
+- [x] Verify the website's real Cognito sign-in and authenticated video submission;
+  the deployed API returned `503 LIVE_ANALYSIS_DISABLED` while review is pending.
+- [ ] Verify real Chrome identity/session APIs and extension Cognito sign-in,
   exact extension ID/callback/host permissions, and the deployed API/result flow.
 
 Suggested commit: `feat: connect the extension dashboard to analysis jobs`.
 
 The [extension walkthrough](serving-configuration.md#extension-connection-and-generated-bundles)
 explains the modules, access-only session, public settings and generated bundle.
-The source and public Pages site stay in demo mode by default. Native Chrome
+The source stays in demo mode by default; the published website uses the
+deployed development connection and offers an explicit demo. Native Chrome
 verification for this stage was blocked by the browser control's URL safety
 check; DOM fixtures do not establish visual layout, native identity behavior
-or production capacity. No real Cognito or live analysis check has passed in
-this stage. Sign-out clears the extension session; refresh-token handling,
+or production capacity. Native extension sign-in and live analysis checks
+remain pending. Sign-out clears the extension session; refresh-token handling,
 global Cognito logout and account deletion are not implemented.
 
 ## 8. AWS deployment, load test and release
