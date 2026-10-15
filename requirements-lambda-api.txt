@@ -1,0 +1,4 @@
+-r requirements-serving-core.txt
+fastapi==0.143.0
+starlette==1.7.0
+mangum==0.22.0

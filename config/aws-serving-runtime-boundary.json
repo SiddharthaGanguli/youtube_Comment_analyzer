@@ -1,0 +1,116 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ProjectFunctionLogStreams",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:us-east-1:895812756022:log-group:/aws/lambda/CommentLensServing-development-*:log-stream:*"
+    },
+    {
+      "Sid": "ServingReads",
+      "Effect": "Allow",
+      "Action": "dynamodb:GetItem",
+      "Resource": "arn:aws:dynamodb:us-east-1:895812756022:table/comment-lens-development-serving"
+    },
+    {
+      "Sid": "ServingTransactions",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:ConditionCheckItem"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:895812756022:table/comment-lens-development-serving",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "dynamodb:EnclosingOperation": [
+            "TransactWriteItems"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ServingIndexQueries",
+      "Effect": "Allow",
+      "Action": "dynamodb:Query",
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:895812756022:table/comment-lens-development-serving",
+        "arn:aws:dynamodb:us-east-1:895812756022:table/comment-lens-development-serving/index/DueIndex",
+        "arn:aws:dynamodb:us-east-1:895812756022:table/comment-lens-development-serving/index/CleanupIndex",
+        "arn:aws:dynamodb:us-east-1:895812756022:table/comment-lens-development-serving/index/OwnerIndex"
+      ]
+    },
+    {
+      "Sid": "OutboxStreamReads",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:DescribeStream",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:895812756022:table/comment-lens-development-serving/stream/*"
+    },
+    {
+      "Sid": "RegionalStreamMetadata",
+      "Effect": "Allow",
+      "Action": "dynamodb:ListStreams",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        }
+      }
+    },
+    {
+      "Sid": "ReleaseQueueDelivery",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes"
+      ],
+      "Resource": "arn:aws:sqs:us-east-1:895812756022:cl-dev-sr_*"
+    },
+    {
+      "Sid": "FailedOutboxDelivery",
+      "Effect": "Allow",
+      "Action": "sqs:SendMessage",
+      "Resource": "arn:aws:sqs:us-east-1:895812756022:CommentLensServing-development-delivery-dlq"
+    },
+    {
+      "Sid": "PrivateServingWorkObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion"
+      ],
+      "Resource": "arn:aws:s3:::comment-lens-development-895812756022-us-east-1-results/serving/development/work/*"
+    },
+    {
+      "Sid": "ExpiredObjectVersionListing",
+      "Effect": "Allow",
+      "Action": "s3:ListBucketVersions",
+      "Resource": "arn:aws:s3:::comment-lens-development-895812756022-us-east-1-results",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "serving/development/work/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ConfiguredYouTubeSecretOnly",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "arn:aws:secretsmanager:us-east-1:895812756022:secret:comment-lens/youtube-api-key-1P4SMe"
+    }
+  ]
+}

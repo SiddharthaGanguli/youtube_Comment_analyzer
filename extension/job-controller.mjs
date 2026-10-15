@@ -40,13 +40,13 @@ export class JobController {
     const revision = this.cancel();
     this.lastSubmission = null;
     this.#sessionToken = null;
-    this.emit({analysis: null, result: null, modelDetails: null, error: null, busy: false});
+    this.emit({phase: "initializing", analysis: null, result: null, modelDetails: null, error: null, busy: true});
     try {
       await this.auth.initialize();
       const token = this.auth.signedIn ? await this.auth.getAccessToken() : null;
       if (this.current(revision)) {
         this.#sessionToken = token;
-        this.emit({phase: token ? "ready" : "signed-out", signedIn: !!token});
+        this.emit({phase: token ? "ready" : "signed-out", signedIn: !!token, busy: false});
       }
     } catch (error) { this.fail(error, revision); }
   }

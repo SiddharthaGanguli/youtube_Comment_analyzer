@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 
 from src.Sentiment_analysis.config.serving import ServingConfigurationManager
+from src.Sentiment_analysis.config.deployment import runtime_settings
 from src.Sentiment_analysis.config.worker import WorkerConfigurationManager
 from src.Sentiment_analysis.config.youtube import load_youtube_api_key, validate_live_youtube
 
@@ -19,7 +20,7 @@ def build_worker_pipeline(settings, jobs, objects, provider, *, image_code_revis
 
 @lru_cache(maxsize=1)
 def worker_runtime():
-    settings = ServingConfigurationManager(os.environ.get("SERVING_CONFIG_PATH")).get_serving_config()
+    settings = runtime_settings(manager=ServingConfigurationManager)
     fixture_path = os.environ.get("SERVING_FIXTURE_PATH")
     if not settings.storage.table_name:
         raise ValueError("Deployment must assign storage.table_name")

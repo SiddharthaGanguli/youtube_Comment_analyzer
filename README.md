@@ -7,6 +7,9 @@ opens a full dashboard tab with sentiment charts, coverage, filters, comment
 details and CSV export. Its backend connection is implemented and tested with
 offline fixtures. The checked-in extension and public website use labeled demo
 comments; a connected bundle requires the assigned AWS deployment settings.
+The website now has its own Cognito browser sign-in and uses the same analysis
+API as the extension. [Deployment and website setup](docs/serving-configuration.md#website-connection-and-first-aws-deployment)
+explains the resource template, Linux packages and generated public settings.
 
 The static [Comment Lens demo](https://siddharthaganguli.github.io/youtube_Comment_analyzer/),
 [dashboard](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html),
@@ -16,7 +19,7 @@ are published on GitHub Pages. The demo makes no YouTube Data API or Comment
 Lens backend calls. GitHub receives page requests and logs visitor IP addresses;
 the privacy policy explains dashboard URLs that may contain a selected video
 link. The [Pages workflow](.github/workflows/pages.yaml) publishes only the
-builder's allowlist of static demo files, excluding backend configuration,
+builder's allowlist of website files and validated public connection settings, excluding private backend configuration,
 credentials, datasets and model artifacts. The developer reported submitting
 the YouTube audit on 15 October 2026. Submission is not analytics-use approval;
 no accepted decision or case reference has been recorded, and live fetching

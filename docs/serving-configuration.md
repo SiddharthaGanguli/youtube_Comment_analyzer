@@ -675,7 +675,7 @@ verifier in memory and stores only the access token, expiry and nonsecret
 revision in trusted extension session storage. It handles expiry and uses
 access tokens for the API. Typing an arbitrary bearer string into standalone
 Swagger still does not create a trusted gateway context. The checked-in
-settings and public website stay in demo mode; a generated enabled extension
+settings and an unconfigured public website stay in demo mode; a generated enabled extension
 receives the exact permissions needed by its assigned deployment.
 
 ### Metrics without comment or identity data
@@ -1066,8 +1066,9 @@ and public Pages site remain a demo.
 Step 7 connects the existing API contract to the dashboard. It is implemented
 and checked with synthetic authentication/API responses and DOM fixtures.
 The source does not contain deployed account or API settings. The public
-website always shows the demo, while the Chrome extension can use a generated
-configuration after the AWS deployment is ready.
+website and Chrome extension each use their own validated public configuration
+after the AWS deployment is ready. Website sign-in uses a full-page Cognito
+redirect; extension sign-in keeps its registered Chromium callback.
 
 This distinction helps when reading the files: the UI and request logic can be
 exercised now, without setting `live_enabled` or spending YouTube quota. An
@@ -1260,3 +1261,121 @@ AWS serving deployment, budgets/alarms, release promotion/rollback and
 The user-reported audit submission on 2026-10-15 leaves approval pending.
 Checked-in serving approval/live flags and client connection defaults remain
 disabled.
+
+## Website connection and first AWS deployment
+
+The ordinary dashboard can now call the same authenticated job API as the
+extension. `web-auth-session.mjs` uses Cognito authorization code flow with
+S256 PKCE. Only a five-minute, single-use state/verifier record survives the
+redirect in this tab's session storage. Access tokens stay in memory; refresh
+and ID tokens are not retained. Callback credentials are removed from browser
+history before exchanging the code. Reloading requires sign-in again.
+
+`web-client-config.mjs` validates website callbacks separately from Chromium
+callbacks. The configured callback must match the dashboard's exact origin
+and path. GitHub Pages uses
+`https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html`;
+development also registers the exact `127.0.0.1:8766` and `localhost:8766`
+dashboard URLs. API and private result downloads require HTTPS. The YouTube
+key stays in Secrets Manager and is read only by the analysis worker's role.
+
+A configured website opens the analysis workspace with no sample results.
+Sign-in and submission require the policy checkbox. Errors stay visible in
+that workspace; they never replace a failed real request with demo comments.
+**Explore demo** remains an explicit choice. Without deployed settings, the
+page explains that live analysis is unavailable and labels its sample data.
+
+### Prepare AWS permissions
+
+The existing `yt-analyzer` identity authenticates, but the 2026-10-15 access
+checks returned `AccessDenied` for the named CloudFormation stack and
+`AccessDeniedException` for reading the configured YouTube secret. An active
+access key does not grant these permissions.
+
+An account administrator must create these customer-managed policies from the
+JSON files in `config/`:
+
+| Policy name | JSON file | Assignment |
+| --- | --- | --- |
+| `CommentLensServingDevelopmentRuntimeBoundary` | `aws-serving-runtime-boundary.json` | Create it; the template assigns it as every Lambda role's permissions boundary |
+| `CommentLensServingDevelopmentDeployment` | `aws-serving-deployment-policy.json` | Attach to the deployment user or role |
+| `CommentLensServingDevelopmentWebDeployment` | `aws-serving-web-deployment-policy.json` | Attach to the deployment user or role |
+
+In the IAM console, choose **Policies → Create policy → JSON**, paste one
+file, then save it with the name above. Repeat for the other files. Under
+**Users → yt-analyzer → Add permissions → Attach policies directly**, attach
+the two deployment policies. These are customer-managed policies rather than
+inline user policies because of IAM's different size limits. The files target
+account `895812756022`, region `us-east-1`, and the development project names.
+The runtime boundary does not grant the deployment user extra access.
+
+The operator policies cannot change or detach the runtime boundary. Lambda
+role creation and inline-policy updates require that boundary. The separate
+Lambda roles restrict API, worker, delivery, cleanup and offline verification
+access. Deployment uses an AWS role/profile; no credential value belongs in
+website settings, source control, a Lambda environment variable, or chat.
+
+### Build and deploy one immutable development release
+
+Commit the source before packaging. The packager refuses uncommitted backend changes,
+verifies the trained model checksum and builds separate Linux x86_64 Python
+3.12 ZIPs. It installs Linux wheels rather than copying Windows packages and
+rejects a package over Lambda's 250 MiB uncompressed limit. Training datasets,
+DVC credentials, notebooks and MLflow are not included. Golden examples come
+from the existing handwritten prediction check, with their model binding.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/package_serving.py --output artifacts/serving-release-001
+.\.venv\Scripts\python.exe -m infra.serving_app
+.\.venv\Scripts\python.exe scripts/deploy_serving.py --release artifacts/serving-release-001 --template artifacts/serving-infrastructure/CommentLensServing-development.template.json --profile YOUR_DEPLOYMENT_PROFILE --deploy
+```
+
+The template creates the development table/indexes, encrypted private result
+bucket, release queue/DLQs, scheduled recovery, Cognito client and HTTP API,
+plus five Lambda functions. It uses no VPC/NAT or always-running server.
+The existing DVC bucket is used only for private deployment packages; serving
+results have their own bucket. The template exceeds CloudFormation's inline
+template limit, so the script uploads it to the private artifact prefix.
+
+After CloudFormation succeeds, the script invokes the verifier Lambda on Linux
+before registering and promoting the release. That check compares the exact
+packaged model's predictions with the saved golden results without calling
+YouTube or reading its key. Verification failure leaves the current-model
+pointer and website settings untouched. Replacing a different active release
+is refused until the separate drain/promotion workflow is implemented.
+
+Live YouTube processing remains disabled in the default template. Enabling it
+requires the accepted analytics-use reference and a template synthesized with
+`--enable-live-youtube`; provide that reference with `--approval-reference` at
+deployment. A submitted audit alone does not change those settings. The default
+API returns the explicit disabled error instead of enqueuing work it cannot run.
+
+### Publish the configured website and run it locally
+
+Successful deployment writes only public identifiers to
+`config/web-client.public.json`: API URL, Cognito public client/domain,
+registered dashboard callback and private result-store base URL. Commit and
+push this file to publish through the Pages workflow. It passes the file to:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/build_pages_site.py --settings config/web-client.public.json
+```
+
+An enabled build includes the website auth/client/controller modules from an
+explicit allowlist. Extension session storage, tests, fixtures, backend code,
+credential files, data and model artifacts stay excluded. Returning to disabled
+settings removes previously allowlisted connection modules from the output.
+
+For local testing, use the generated local callback settings from the release:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/build_pages_site.py --settings artifacts/serving-release-001/web-client.local.json --output artifacts/serving-web
+.\.venv\Scripts\python.exe -m http.server 8766 --bind 127.0.0.1 --directory artifacts/serving-web
+```
+
+Stop the older fixture HTTP server before starting this server on the same
+port. `artifacts/extension-fixture` is always synthetic; the website build above
+is the one that uses the real API. A real account sign-in and bounded live video
+sample still need verification after AWS permissions, deployment and the
+recorded live-use prerequisites are in place. No load/capacity result is implied
+by the connection tests.

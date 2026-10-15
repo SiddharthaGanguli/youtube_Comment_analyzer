@@ -262,6 +262,7 @@ const ERROR_COPY = {
   IDEMPOTENCY_CONFLICT: "This submission could not be retried. Start a new analysis.",
 };
 const PHASE_COPY = {
+  initializing: "Checking your sign-in session…",
   "signed-out": "Sign in to analyze a video. Demo mode remains available.", ready: "Paste a public video link to start an analysis.",
   "signing-in": "Complete sign-in in the secure account window.", submitting: "Submitting your analysis…",
   QUEUED: "Your analysis is queued.", FETCHING: "Reading a bounded sample of public comments…",
@@ -272,6 +273,7 @@ const PHASE_COPY = {
   deleted: "This analysis was removed from your history.", paused: "Progress checks are paused while you explore the demo.",
 };
 const FIXTURE_PHASE_COPY = {
+  initializing: "Checking the simulated session…",
   "signed-out": "Use the fixture account to simulate a test run.", ready: "Paste a video link to test the request flow with fixed comments.",
   "signing-in": "Activating the simulated account.", submitting: "Starting the simulated request…",
   QUEUED: "The test run is queued.", FETCHING: "Simulating comment fetching; no comments are being downloaded.",
@@ -309,7 +311,7 @@ function renderConnection(status = controller?.state) {
   $("#submit-video").textContent = isDemo ? "Check video link" : fixture ? "Simulate test run" : "Analyze comments";
   $("#submit-video").disabled = !isDemo && (status?.busy || !status?.signedIn || !$("#accept-policy").checked);
   $("#connection-title").textContent = isDemo ? "Demo workspace" : fixture ? status?.signedIn ? "Fixture account active" : "Synthetic test workspace" : status?.signedIn ? "Signed in" : "Your analysis workspace";
-  $("#connection-copy").textContent = fixture ? "This account and all results are simulated locally. No real sign-in or comment fetching takes place." : isDemo ? "Explore sample data, or switch to your configured analysis service." : "Sign-in uses your Comment Lens account. Signing out clears this extension session; it does not close your account.";
+  $("#connection-copy").textContent = fixture ? "This account and all results are simulated locally. No real sign-in or comment fetching takes place." : isDemo ? "Explore sample data, or switch to your configured analysis service." : "Sign in with your Comment Lens account. Signing out clears this session; it does not close your account.";
   $("#job-status").hidden = isDemo;
   $("#analysis-content").hidden = !isDemo && !status?.result;
   $("#export").disabled = !isDemo && !status?.result;
@@ -348,11 +350,12 @@ function renderConnection(status = controller?.state) {
 }
 export function showUnavailable() {
   $("#video-feedback").hidden = false;
-  $("#video-feedback").textContent = "The analysis service settings could not be loaded. Demo mode is available.";
+  $("#video-feedback").textContent = "Live analysis is not connected on this page yet. You can explore the labeled demo below.";
 }
-export function configureService(nextController, adapter, {synthetic = false} = {}) {
+export function configureService(nextController, adapter, {synthetic = false, startInService = false} = {}) {
   syntheticService = synthetic;
-  controller = nextController; resultAdapter = adapter; controller.onChange = renderConnection; controller.suspended = true;
+  isDemo = !startInService;
+  controller = nextController; resultAdapter = adapter; controller.onChange = renderConnection; controller.suspended = !startInService;
   if (syntheticService) {
     $("#remove-title").textContent = "Remove this test run?";
     $("#remove-dialog > p").textContent = "This removes the synthetic result from this preview.";

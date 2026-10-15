@@ -13,6 +13,7 @@ from src.Sentiment_analysis.api.middleware import RequestBoundary
 from src.Sentiment_analysis.api.metrics import RequestMetrics
 from src.Sentiment_analysis.api.routes import router
 from src.Sentiment_analysis.config.serving import ServingConfigurationManager
+from src.Sentiment_analysis.config.deployment import runtime_settings
 from src.Sentiment_analysis.entity.analysis import AnalysisResult
 from src.Sentiment_analysis.repositories.jobs import JobError
 from src.Sentiment_analysis.services.telemetry import Telemetry
@@ -21,7 +22,7 @@ from src.Sentiment_analysis.services.telemetry import Telemetry
 def create_app(settings=None, *, pipeline=None, pipeline_factory=None, clock=None, telemetry=None):
     if settings is None:
         import os
-        settings = ServingConfigurationManager(os.environ.get("SERVING_CONFIG_PATH")).get_serving_config()
+        settings = runtime_settings(manager=ServingConfigurationManager)
     if pipeline_factory is None:
         from src.Sentiment_analysis.config.serving_runtime import api_runtime
         pipeline_factory = api_runtime

@@ -1,0 +1,5 @@
+# Shared Lambda contracts and AWS adapters, without HTTP or training packages.
+pydantic==2.14.0
+PyYAML==6.0.3
+tzdata==2026.5
+boto3==1.43.106

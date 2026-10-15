@@ -1,4 +1,4 @@
-name: Publish demo pages
+name: Publish Comment Lens website
 
 "on":
   push:
@@ -9,6 +9,7 @@ name: Publish demo pages
       - "extension/*.mjs"
       - "extension/assets/developed-with-youtube.png"
       - "scripts/build_pages_site.py"
+      - "config/web-client.public.json"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/pages.yaml"
@@ -44,8 +45,8 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Check demo behavior
         run: npm test
-      - name: Stage static demo
-        run: python scripts/build_pages_site.py
+      - name: Stage website with public connection settings
+        run: python scripts/build_pages_site.py --settings config/web-client.public.json
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

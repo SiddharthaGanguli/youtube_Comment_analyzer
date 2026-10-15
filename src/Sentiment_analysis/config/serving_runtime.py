@@ -12,6 +12,7 @@ from botocore.config import Config
 
 from src.Sentiment_analysis.components.job_delivery import Dispatcher
 from src.Sentiment_analysis.config.serving import ServingConfigurationManager
+from src.Sentiment_analysis.config.deployment import runtime_settings
 from src.Sentiment_analysis.integrations.objects import ObjectStore
 from src.Sentiment_analysis.pipeline.job_maintenance import Reconciler
 from src.Sentiment_analysis.repositories.dynamo import DynamoStore
@@ -42,7 +43,7 @@ def queue_registry(raw: str, region: str) -> dict[str, str]:
 
 @lru_cache(maxsize=1)
 def delivery_runtime():
-    settings = ServingConfigurationManager(os.environ.get("SERVING_CONFIG_PATH")).get_serving_config()
+    settings = runtime_settings(manager=ServingConfigurationManager)
     if settings.storage.table_name is None:
         raise ValueError("Deployment must assign storage.table_name")
     registry = queue_registry(os.environ.get("SERVING_QUEUE_REGISTRY_JSON", "{}"), settings.region)
@@ -62,7 +63,7 @@ def delivery_runtime():
 def api_runtime():
     """The API needs DynamoDB and signing credentials, with no SQS/model client."""
     from src.Sentiment_analysis.pipeline.api import APIPipeline
-    settings = ServingConfigurationManager(os.environ.get("SERVING_CONFIG_PATH")).get_serving_config()
+    settings = runtime_settings(manager=ServingConfigurationManager)
     if settings.storage.table_name is None:
         raise ValueError("Deployment must assign storage.table_name")
     sdk = Config(connect_timeout=2, read_timeout=5, retries={"mode": "standard", "total_max_attempts": 3})

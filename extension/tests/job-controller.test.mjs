@@ -44,6 +44,23 @@ function harness() {
   };
 }
 
+test("Session initialization blocks a second sign-in until callback processing finishes", async () => {
+  const h = harness(), waiting = deferred();
+  let signIns = 0;
+  h.auth.initialize = () => waiting.promise;
+  h.auth.signIn = async () => {signIns++;};
+  const initializing = h.controller.initialize();
+  assert.equal(h.controller.state.phase, "initializing");
+  assert.equal(h.controller.state.busy, true);
+  await h.controller.signIn();
+  assert.equal(signIns, 0);
+  waiting.resolve();
+  await initializing;
+  assert.equal(h.controller.state.phase, "ready");
+  assert.equal(h.controller.state.busy, false);
+  h.controller.dispose();
+});
+
 test("Default browser timers retain their Window receiver through sign-in, scheduling and cancellation", async () => {
   const nativeSet = globalThis.setTimeout, nativeClear = globalThis.clearTimeout;
   const timers = new Map(), delays = [], cleared = [];
