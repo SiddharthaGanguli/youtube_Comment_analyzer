@@ -1,5 +1,6 @@
 """Keep attachable deployment policies and bounded runtime roles deployable."""
 
+import fnmatch
 import json
 from pathlib import Path
 import unittest
@@ -131,6 +132,36 @@ class ServingDeploymentPolicyTests(unittest.TestCase):
         # deliberately not required for this private bucket / ordinary table.
         self.assertFalse(allowed & {"s3:PutObjectAcl", "s3:CreateBucketMetadataTableConfiguration",
                                     "dynamodb:ImportTable", "dynamodb:PutResourcePolicy", "kms:CreateGrant"})
+
+    def test_api_stage_tagging_covers_create_collection_and_stays_regional(self):
+        web = self.policies[FILES[1]]["Statement"]
+        for action in ("apigateway:TagResource", "apigateway:UntagResource"):
+            matching = [item for item in web if action in actions(item)]
+            self.assertTrue(matching, action)
+            patterns = [resource for item in matching for resource in (
+                [item["Resource"]] if isinstance(item["Resource"], str) else item["Resource"])]
+            self.assertEqual(set(patterns), {"arn:aws:apigateway:us-east-1::/apis",
+                                            "arn:aws:apigateway:us-east-1::/apis/*"})
+            # CloudFormation authorizes create-time stage tags on the collection
+            # before /stages/$default exists; a stage-only pattern is insufficient.
+            for target in ("arn:aws:apigateway:us-east-1::/apis",
+                           "arn:aws:apigateway:us-east-1::/apis/3ppp988jf4",
+                           "arn:aws:apigateway:us-east-1::/apis/3ppp988jf4/stages",
+                           "arn:aws:apigateway:us-east-1::/apis/3ppp988jf4/stages/$default"):
+                self.assertTrue(any(fnmatch.fnmatchcase(target, pattern) for pattern in patterns), target)
+            for unrelated in ("arn:aws:apigateway:eu-west-1::/apis/example/stages",
+                              "arn:aws:apigateway:us-east-1::/restapis/example/stages",
+                              "arn:aws:apigateway:us-east-1::/domainnames/example.test"):
+                self.assertFalse(any(fnmatch.fnmatchcase(unrelated, pattern) for pattern in patterns), unrelated)
+
+    def test_cognito_create_tags_cover_preauthorization_without_widening_pool_management(self):
+        web = self.policies[FILES[1]]["Statement"]
+        target = "arn:aws:cognito-idp:us-east-1:895812756022:userpool/*"
+        preauthorization = [item for item in web if item["Resource"] == target]
+        self.assertEqual(len(preauthorization), 1)
+        self.assertEqual(actions(preauthorization[0]), ["cognito-idp:TagResource"])
+        management = next(item for item in web if "cognito-idp:DeleteUserPool" in actions(item))
+        self.assertEqual(management["Resource"], "arn:aws:cognito-idp:us-east-1:895812756022:userpool/us-east-1_*")
 
 
 if __name__ == "__main__":

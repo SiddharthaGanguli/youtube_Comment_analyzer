@@ -1287,10 +1287,9 @@ page explains that live analysis is unavailable and labels its sample data.
 
 ### Prepare AWS permissions
 
-The existing `yt-analyzer` identity authenticates, but the 2026-10-15 access
-checks returned `AccessDenied` for the named CloudFormation stack and
-`AccessDeniedException` for reading the configured YouTube secret. An active
-access key does not grant these permissions.
+The deployment identity needs permissions to create the named development
+stack and its resources. An active access key only authenticates the caller;
+the two deployment policies below grant those operations.
 
 An account administrator must create these customer-managed policies from the
 JSON files in `config/`:
@@ -1307,7 +1306,15 @@ file, then save it with the name above. Repeat for the other files. Under
 the two deployment policies. These are customer-managed policies rather than
 inline user policies because of IAM's different size limits. The files target
 account `895812756022`, region `us-east-1`, and the development project names.
-The runtime boundary does not grant the deployment user extra access.
+The runtime boundary is for the Lambda roles. Leave the deployment user's
+**Permissions boundary** section **Not set**; assigning the runtime boundary
+to that user blocks deployment operations.
+
+If a managed policy already exists, open **Edit ? JSON**, replace its complete
+document with the current repository file, and save the new version as the
+**default version**. Keep the policy attached to the deployment user. The web
+policy includes API Gateway stage tagging and Cognito create-time tagging;
+CloudFormation checks those permissions before the final resource IDs exist.
 
 The operator policies cannot change or detach the runtime boundary. Lambda
 role creation and inline-policy updates require that boundary. The separate

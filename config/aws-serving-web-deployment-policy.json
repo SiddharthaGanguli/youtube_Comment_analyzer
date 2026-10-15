@@ -18,6 +18,18 @@
       ]
     },
     {
+      "Sid": "TagRegionalHttpApiResources",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:TagResource",
+        "apigateway:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:us-east-1::/apis",
+        "arn:aws:apigateway:us-east-1::/apis/*"
+      ]
+    },
+    {
       "Sid": "CreateAccountRegionalUserPool",
       "Effect": "Allow",
       "Action": [
@@ -29,6 +41,12 @@
           "aws:RequestedRegion": "us-east-1"
         }
       }
+    },
+    {
+      "Sid": "TagNewRegionalCognitoUserPool",
+      "Effect": "Allow",
+      "Action": "cognito-idp:TagResource",
+      "Resource": "arn:aws:cognito-idp:us-east-1:895812756022:userpool/*"
     },
     {
       "Sid": "ManageRegionalCognitoSignIn",
