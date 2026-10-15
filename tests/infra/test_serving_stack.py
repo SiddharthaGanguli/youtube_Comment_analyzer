@@ -84,6 +84,8 @@ class ServingStackTests(unittest.TestCase):
         self.assertFalse(any(resource["Type"].startswith(("AWS::EC2::", "AWS::ECS::")) for resource in self.resources.values()))
         self.assertNotIn("ExtensionId", self.template["Parameters"], "Web deployment cannot invent an extension ID")
         self.assertNotIn("ApiFunctionName", self.template["Parameters"], "The full stack owns its API function")
+        self.assertNotIn("BootstrapVersion", self.template["Parameters"], "Direct S3 deployment does not require CDK bootstrap")
+        self.assertNotIn("CheckBootstrapVersion", self.template.get("Rules", {}))
 
     def test_web_callbacks_and_cors_match_exact_registered_pages(self):
         client = self.resources_of("AWS::Cognito::UserPoolClient")[0]["Properties"]

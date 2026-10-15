@@ -83,6 +83,33 @@ class ServingReleaseTests(unittest.TestCase):
         s3.upload_file.assert_not_called()
         cfn.update_stack.assert_not_called()
 
+    def test_failed_first_stack_resumes_its_original_template_and_parameters(self):
+        release = "sr_" + "a" * 64
+        prefix = f"serving-deployments/development/{release}"
+        manifest = {"release_id": release, "code_revision": "c" * 40,
+                    "packages": {name: {"sha256": "b" * 64} for name in ("api", "worker")}}
+        parameters = [{"ParameterKey": "ModelReleaseId", "ParameterValue": release},
+            *[{"ParameterKey": name.title() + "CodeKey", "ParameterValue": f"{prefix}/{name}-{'b' * 64}.zip"}
+              for name in ("api", "worker")]]
+        cfn, s3 = Mock(), Mock()
+        cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_FAILED", "Parameters": parameters}]}
+        cfn.get_waiter.return_value.wait.side_effect = RuntimeError("stop after recovery request")
+        s3.get_public_access_block.return_value = {"PublicAccessBlockConfiguration": dict.fromkeys(
+            ("BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets"), True)}
+        session = Mock(); session.client.side_effect = lambda name: {"cloudformation": cfn, "s3": s3}[name]
+        with tempfile.TemporaryDirectory() as directory:
+            template = Path(directory) / "template.json"
+            template.write_text(json.dumps({"Metadata": {"CommentLensReleaseWorkflow": "first-development-release"}}), encoding="utf-8")
+            with patch("scripts.deploy_serving.checked_release", return_value=(manifest, None, None)):
+                with self.assertRaisesRegex(RuntimeError, "recovery request"):
+                    deploy_release(session, directory, template)
+        sent = cfn.update_stack.call_args.kwargs
+        self.assertTrue(sent["UsePreviousTemplate"])
+        self.assertTrue(sent["DisableRollback"])
+        self.assertNotIn("TemplateURL", sent)
+        self.assertTrue(all(item["UsePreviousValue"] for item in sent["Parameters"]))
+        cfn.create_stack.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

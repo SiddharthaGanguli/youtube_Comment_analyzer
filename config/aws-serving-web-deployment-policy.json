@@ -35,10 +35,13 @@
       "Effect": "Allow",
       "Action": [
         "cognito-idp:DescribeUserPool",
+        "cognito-idp:GetUserPoolMfaConfig",
+        "cognito-idp:SetUserPoolMfaConfig",
         "cognito-idp:UpdateUserPool",
         "cognito-idp:DeleteUserPool",
         "cognito-idp:CreateUserPoolClient",
         "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:ListUserPoolClientSecrets",
         "cognito-idp:UpdateUserPoolClient",
         "cognito-idp:DeleteUserPoolClient",
         "cognito-idp:CreateResourceServer",
@@ -80,6 +83,7 @@
         "logs:DeleteLogGroup",
         "logs:PutRetentionPolicy",
         "logs:DeleteRetentionPolicy",
+        "logs:GetDataProtectionPolicy",
         "logs:TagResource",
         "logs:UntagResource",
         "logs:ListTagsForResource",
@@ -90,6 +94,26 @@
         "arn:aws:logs:us-east-1:895812756022:log-group:/aws/lambda/CommentLensServing-development-*",
         "arn:aws:logs:us-east-1:895812756022:log-group:CommentLensServing-development-*"
       ]
+    },
+    {
+      "Sid": "ReadPrivateResultsBucketProviderMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetAccelerateConfiguration",
+        "s3:GetAnalyticsConfiguration",
+        "s3:GetInventoryConfiguration",
+        "s3:GetBucketLogging",
+        "s3:GetMetricsConfiguration",
+        "s3:GetBucketNotification",
+        "s3:GetReplicationConfiguration",
+        "s3:GetBucketWebsite",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:ListTagsForResource",
+        "s3:GetBucketAbac",
+        "s3:GetIntelligentTieringConfiguration",
+        "s3:GetBucketMetadataTableConfiguration"
+      ],
+      "Resource": "arn:aws:s3:::comment-lens-development-895812756022-us-east-1-results"
     },
     {
       "Sid": "ManageServingAlarms",
@@ -126,6 +150,7 @@
         "logs:DescribeResourcePolicies",
         "logs:GetLogDelivery",
         "logs:ListLogDeliveries",
+        "logs:DescribeIndexPolicies",
         "logs:DescribeLogGroups"
       ],
       "Resource": "*",

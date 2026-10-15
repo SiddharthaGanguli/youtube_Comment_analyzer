@@ -1336,6 +1336,11 @@ plus five Lambda functions. It uses no VPC/NAT or always-running server.
 The existing DVC bucket is used only for private deployment packages; serving
 results have their own bucket. The template exceeds CloudFormation's inline
 template limit, so the script uploads it to the private artifact prefix.
+It does not require a CDK bootstrap stack or SSM bootstrap parameter. Failed
+creates preserve completed resources. After fixing an external permission
+failure, rerunning the same release resumes its previous template and
+parameters instead of deleting the named table, bucket or queues. A failed
+stack cannot publish website settings or a current-model pointer.
 
 After CloudFormation succeeds, the script invokes the verifier Lambda on Linux
 before registering and promoting the release. That check compares the exact

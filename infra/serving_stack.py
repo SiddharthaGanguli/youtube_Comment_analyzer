@@ -6,7 +6,7 @@ never packages local credentials, datasets or training environments.
 
 import json
 
-from aws_cdk import Aws, CfnOutput, CfnParameter, CfnRule, CfnRuleAssertion, Fn, RemovalPolicy
+from aws_cdk import Aws, BootstraplessSynthesizer, CfnOutput, CfnParameter, CfnRule, CfnRuleAssertion, Fn, RemovalPolicy
 from aws_cdk import aws_cloudwatch as cloudwatch, aws_dynamodb as dynamodb
 from aws_cdk import aws_events as events, aws_iam as iam, aws_lambda as lambda_
 from aws_cdk import aws_logs as logs, aws_s3 as s3, aws_sqs as sqs
@@ -30,6 +30,9 @@ class ServingStack(AuthStack):
             raise ValueError("Serving and authorization environments/regions must match")
         if live_youtube and not (settings.youtube.api_key_secret_arn and settings.youtube.project_quota_verified):
             raise ValueError("Live deployment requires a secret reference and verified quota")
+        # The deploy script supplies S3 code/template locations directly. There
+        # are no CDK assets or bootstrap resources to look up or provision.
+        kwargs.setdefault("synthesizer", BootstraplessSynthesizer())
         super().__init__(scope, id, auth=auth, api_limits=settings.api,
                          observability=settings.observability, defer_authorization=True, **kwargs)
         if len(self.stack_name) > 44:

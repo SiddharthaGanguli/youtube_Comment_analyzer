@@ -78,9 +78,59 @@ class ServingDeploymentPolicyTests(unittest.TestCase):
         log_delivery = next(item for item in web if "logs:PutResourcePolicy" in actions(item))
         self.assertEqual(log_delivery["Resource"], "*")
         self.assertEqual(log_delivery["Condition"]["StringEquals"]["aws:RequestedRegion"], "us-east-1")
+        # DescribeIndexPolicies has no resource-level permission in IAM.
+        index_policies = next(item for item in web if "logs:DescribeIndexPolicies" in actions(item))
+        self.assertEqual(index_policies["Resource"], "*")
+        self.assertEqual(index_policies["Condition"]["StringEquals"]["aws:RequestedRegion"], "us-east-1")
         service_linked = next(item for item in web if "iam:CreateServiceLinkedRole" in actions(item))
         self.assertEqual(service_linked["Condition"]["StringEquals"]["iam:AWSServiceName"], "ops.apigateway.amazonaws.com")
         self.assertTrue(service_linked["Resource"].endswith("/ops.apigateway.amazonaws.com/AWSServiceRoleForAPIGateway"))
+
+    def test_provider_stabilization_permissions_stay_with_the_project_resource(self):
+        # Current us-east-1 CloudFormation provider schemas declare these reads
+        # separately from create, including metadata for unset optional features.
+        # Omitting them can leave a successful service create unable to stabilize.
+        statements = [item for name in FILES[:2] for item in self.policies[name]["Statement"]]
+        bucket = "arn:aws:s3:::comment-lens-development-895812756022-us-east-1-results"
+        table = "arn:aws:dynamodb:us-east-1:895812756022:table/comment-lens-development-serving"
+        expected = {
+            bucket: {
+                "s3:ListBucket", "s3:GetBucketAcl", "s3:GetAccelerateConfiguration",
+                "s3:GetAnalyticsConfiguration", "s3:GetInventoryConfiguration", "s3:GetBucketLogging",
+                "s3:GetMetricsConfiguration", "s3:GetBucketNotification", "s3:GetReplicationConfiguration",
+                "s3:GetBucketWebsite", "s3:GetBucketObjectLockConfiguration", "s3:ListTagsForResource",
+                "s3:GetBucketAbac", "s3:GetIntelligentTieringConfiguration", "s3:GetBucketMetadataTableConfiguration",
+            },
+            table: {"dynamodb:DescribeContributorInsights", "dynamodb:DescribeKinesisStreamingDestination",
+                    "dynamodb:GetResourcePolicy"},
+            "arn:aws:cognito-idp:us-east-1:895812756022:userpool/us-east-1_*": {
+                "cognito-idp:GetUserPoolMfaConfig", "cognito-idp:SetUserPoolMfaConfig",
+                "cognito-idp:ListUserPoolClientSecrets",
+            },
+            "arn:aws:lambda:us-east-1:895812756022:function:CommentLensServing-development-*": {
+                "lambda:GetFunctionCodeSigningConfig", "lambda:GetFunctionRecursionConfig",
+                "lambda:GetRuntimeManagementConfig", "lambda:GetFunctionScalingConfig",
+            },
+            "arn:aws:logs:us-east-1:895812756022:log-group:/aws/lambda/CommentLensServing-development-*": {
+                "logs:GetDataProtectionPolicy",
+            },
+        }
+        for target, required in expected.items():
+            for action in required:
+                with self.subTest(action=action):
+                    matching = [item for item in statements if action in actions(item)]
+                    self.assertTrue(matching)
+                    for item in matching:
+                        resources = [item["Resource"]] if isinstance(item["Resource"], str) else item["Resource"]
+                        self.assertIn(target, resources)
+                        self.assertNotIn("*", resources)
+                        if target == bucket:
+                            self.assertEqual(resources, [bucket])
+        allowed = {action for item in statements for action in actions(item)}
+        # Provider schemas also cover unused optional write features. They are
+        # deliberately not required for this private bucket / ordinary table.
+        self.assertFalse(allowed & {"s3:PutObjectAcl", "s3:CreateBucketMetadataTableConfiguration",
+                                    "dynamodb:ImportTable", "dynamodb:PutResourcePolicy", "kms:CreateGrant"})
 
 
 if __name__ == "__main__":

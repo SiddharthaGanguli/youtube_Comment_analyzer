@@ -87,9 +87,10 @@ def deploy_release(session, directory, template_path, *, approval_reference=""):
             raise
     if existing:
         previous = {row["OutputKey"]: row["OutputValue"] for row in existing.get("Outputs", [])}
-        if previous.get("ServingReleaseId") != manifest["release_id"]:
-            raise ValueError("An existing different release needs drain/promotion; refusing to replace active workers")
         parameters = {row["ParameterKey"]: row.get("ParameterValue") for row in existing.get("Parameters", [])}
+        current_release = previous.get("ServingReleaseId") or parameters.get("ModelReleaseId")
+        if current_release != manifest["release_id"]:
+            raise ValueError("An existing different release needs drain/promotion; refusing to replace active workers")
         if parameters.get("ApiCodeKey") != code_keys["api"] or parameters.get("WorkerCodeKey") != code_keys["worker"]:
             raise ValueError("This release already has different immutable packages; reuse its original ZIPs")
     block = s3.get_public_access_block(Bucket=ARTIFACT_BUCKET)["PublicAccessBlockConfiguration"]
@@ -111,16 +112,29 @@ def deploy_release(session, directory, template_path, *, approval_reference=""):
         "Tags": [{"Key": "Project", "Value": "CommentLens"}, {"Key": "Environment", "Value": "development"}]}
     changed = True
     if existing:
+        status = existing["StackStatus"]
+        if status not in {"CREATE_COMPLETE", "UPDATE_COMPLETE", "CREATE_FAILED", "UPDATE_FAILED"}:
+            raise ValueError("The serving stack is not ready for an update; inspect its current operation")
+        recovering = status in {"CREATE_FAILED", "UPDATE_FAILED"}
+        if recovering:
+            # Preserve the successfully created named resources, then retry the
+            # failed resources after their external permission issue is fixed.
+            request.pop("TemplateURL")
+            request["UsePreviousTemplate"] = True
+            request["Parameters"] = [{"ParameterKey": row["ParameterKey"], "UsePreviousValue": True}
+                                     for row in existing["Parameters"]]
         try:
-            cfn.update_stack(**request)
+            cfn.update_stack(**request, DisableRollback=True)
         except ClientError as error:
             if error.response["Error"]["Code"] == "ValidationError" and "No updates" in error.response["Error"].get("Message", ""):
+                if recovering:
+                    raise ValueError("Failed stack has not recovered; no release or website settings were published") from None
                 changed = False
             else:
                 raise
         waiter = "stack_update_complete"
     else:
-        cfn.create_stack(**request, EnableTerminationProtection=True)
+        cfn.create_stack(**request, EnableTerminationProtection=True, DisableRollback=True)
         waiter = "stack_create_complete"
     if changed:
         cfn.get_waiter(waiter).wait(StackName=STACK_NAME, WaiterConfig={"Delay": 10, "MaxAttempts": 120})
