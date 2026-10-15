@@ -77,6 +77,8 @@ def deploy_release(session, directory, template_path, *, approval_reference=""):
     if template.get("Metadata", {}).get("CommentLensReleaseWorkflow") != "first-development-release":
         raise ValueError("Use the serving template emitted by infra.serving_app")
     cfn, s3 = session.client("cloudformation"), session.client("s3")
+    prefix = f"serving-deployments/development/{manifest['release_id']}"
+    code_keys = {name: f"{prefix}/{name}-{manifest['packages'][name]['sha256']}.zip" for name in ("api", "worker")}
     existing = None
     try:
         existing = cfn.describe_stacks(StackName=STACK_NAME)["Stacks"][0]
@@ -87,18 +89,21 @@ def deploy_release(session, directory, template_path, *, approval_reference=""):
         previous = {row["OutputKey"]: row["OutputValue"] for row in existing.get("Outputs", [])}
         if previous.get("ServingReleaseId") != manifest["release_id"]:
             raise ValueError("An existing different release needs drain/promotion; refusing to replace active workers")
+        parameters = {row["ParameterKey"]: row.get("ParameterValue") for row in existing.get("Parameters", [])}
+        if parameters.get("ApiCodeKey") != code_keys["api"] or parameters.get("WorkerCodeKey") != code_keys["worker"]:
+            raise ValueError("This release already has different immutable packages; reuse its original ZIPs")
     block = s3.get_public_access_block(Bucket=ARTIFACT_BUCKET)["PublicAccessBlockConfiguration"]
     if not all(block.get(field) is True for field in ("BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets")):
         raise ValueError("Deployment packages require a bucket with public access blocked")
-    prefix = f"serving-deployments/development/{manifest['release_id']}"
     for name in ("api", "worker"):
-        s3.upload_file(str(directory / f"{name}.zip"), ARTIFACT_BUCKET, f"{prefix}/{name}.zip",
+        s3.upload_file(str(directory / f"{name}.zip"), ARTIFACT_BUCKET, code_keys[name],
                        ExtraArgs={"ServerSideEncryption": "AES256", "ChecksumAlgorithm": "SHA256"})
-    template_key = f"{prefix}/serving.template.json"
+    template_hash = hashlib.sha256(template_path.read_bytes()).hexdigest()
+    template_key = f"{prefix}/serving-{template_hash}.template.json"
     s3.put_object(Bucket=ARTIFACT_BUCKET, Key=template_key, Body=template_path.read_bytes(),
                   ServerSideEncryption="AES256", ContentType="application/json")
-    parameters = {"RuntimeArtifactsBucket": ARTIFACT_BUCKET, "ApiCodeKey": f"{prefix}/api.zip",
-        "WorkerCodeKey": f"{prefix}/worker.zip", "CodeRevision": manifest["code_revision"],
+    parameters = {"RuntimeArtifactsBucket": ARTIFACT_BUCKET, "ApiCodeKey": code_keys["api"],
+        "WorkerCodeKey": code_keys["worker"], "CodeRevision": manifest["code_revision"],
         "ModelReleaseId": manifest["release_id"], "AnalyticsUseApprovalReference": approval_reference}
     request = {"StackName": STACK_NAME, "TemplateURL": f"https://{ARTIFACT_BUCKET}.s3.amazonaws.com/{template_key}",
         "Parameters": [{"ParameterKey": key, "ParameterValue": value} for key, value in parameters.items()],

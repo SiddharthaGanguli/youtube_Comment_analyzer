@@ -4,10 +4,11 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 import zipfile
 
 from scripts.package_serving import golden_examples, write_zip
-from scripts.deploy_serving import checked_release, release_manifest, web_settings
+from scripts.deploy_serving import checked_release, deploy_release, release_manifest, web_settings
 from src.Sentiment_analysis.config.serving import ServingConfigurationManager
 from src.Sentiment_analysis.entity.analysis import ModelReference
 from src.Sentiment_analysis.entity.api import release_fingerprint
@@ -64,6 +65,23 @@ class ServingReleaseTests(unittest.TestCase):
             "SecretArn": "must-not-copy"}, "https://example.com/dashboard.html")
         self.assertNotIn("must-not-copy", json.dumps(config))
         self.assertEqual(config["maxComments"], 1000)
+
+    def test_existing_release_cannot_be_replaced_with_different_package_bytes(self):
+        manifest = {"release_id": "sr_" + "a" * 64,
+                    "packages": {name: {"sha256": "b" * 64} for name in ("api", "worker")}}
+        cfn, s3 = Mock(), Mock()
+        cfn.describe_stacks.return_value = {"Stacks": [{"Outputs": [
+            {"OutputKey": "ServingReleaseId", "OutputValue": manifest["release_id"]}],
+            "Parameters": [{"ParameterKey": "ApiCodeKey", "ParameterValue": "older-package.zip"}]}]}
+        session = Mock(); session.client.side_effect = lambda name: {"cloudformation": cfn, "s3": s3}[name]
+        with tempfile.TemporaryDirectory() as directory:
+            template = Path(directory) / "template.json"
+            template.write_text(json.dumps({"Metadata": {"CommentLensReleaseWorkflow": "first-development-release"}}), encoding="utf-8")
+            with patch("scripts.deploy_serving.checked_release", return_value=(manifest, None, None)):
+                with self.assertRaisesRegex(ValueError, "immutable packages"):
+                    deploy_release(session, directory, template)
+        s3.upload_file.assert_not_called()
+        cfn.update_stack.assert_not_called()
 
 
 if __name__ == "__main__":
