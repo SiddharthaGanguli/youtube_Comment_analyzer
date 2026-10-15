@@ -6,7 +6,9 @@ implemented and checked with offline fixtures. Step 6's adapter and worker
 integration are implemented and project quota is recorded; approval evidence and its live sample remain
 pending. Step 7's extension connection is implemented and checked with offline
 fixtures; native Chrome, deployed sign-in and live end-to-end checks remain
-pending, along with deployment. Finish and verify each step, then commit and push it before
+pending. Step 8's development AWS stack, Linux model verification and initial
+release promotion are complete; production capacity and rollout checks remain
+open. Finish and verify each step, then commit and push it before
 starting the next, following the
 project's existing workflow.
 
@@ -164,13 +166,17 @@ global Cognito logout and account deletion are not implemented.
 
 ## 8. AWS deployment, load test and release
 
-- [ ] Choose the monthly budget and configure cost/operational alarms.
-- [ ] Add CDK environments, separate IAM roles, private serving prefixes,
-  lifecycle/CORS rules, queues/DLQs, tables/indexes, triggers and cleanup schedule.
-- [ ] Build pinned Linux worker images and run golden predictions; promote via
-  immutable manifests/queues and GitHub OIDC, with rollback kept available.
-- [ ] Check account Lambda concurrency and other service quotas before setting
-  reserved concurrency. Keep all release mappings within the worker cap.
+- [x] Deploy development CDK resources, separate IAM roles, private serving
+  storage, lifecycle/CORS rules, queues/DLQs, tables/indexes, triggers, cleanup
+  schedule and operational alarms.
+- [x] Build pinned Linux Lambda packages, pass eight golden examples in AWS,
+  register the immutable model manifest and promote the first release.
+- [x] Handle the account's reservation restriction with explicit development
+  shared concurrency and a two-worker SQS cap.
+- [ ] Choose the monthly budget and configure cost alerts.
+- [ ] Add GitHub OIDC deployment and verify production rollout/rollback.
+- [ ] Verify production Lambda concurrency and other service quotas before
+  allocating reserved concurrency. Keep mappings within the worker cap.
 - [ ] Run the system design's 1,000-user fixture/load and fault-injection checks,
   then measure real fetch duration, memory, cost and cache hit ratio.
 - [ ] Recalculate concurrency/admission settings from measurements; document

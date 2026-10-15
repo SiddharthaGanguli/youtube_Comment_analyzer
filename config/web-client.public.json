@@ -1,3 +1,14 @@
 {
-  "enabled": false
+  "enabled": true,
+  "apiBaseUrl": "https://3ppp988jf4.execute-api.us-east-1.amazonaws.com",
+  "cognitoDomain": "https://comment-lens-development-895812756022.auth.us-east-1.amazoncognito.com",
+  "clientId": "39osl2794e59csjl9tibs5u1vu",
+  "redirectUri": "https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html",
+  "resultBaseUrl": "https://comment-lens-development-895812756022-us-east-1-results.s3.amazonaws.com/serving/development",
+  "pollScheduleSeconds": [
+    2,
+    5,
+    10
+  ],
+  "maxComments": 1000
 }

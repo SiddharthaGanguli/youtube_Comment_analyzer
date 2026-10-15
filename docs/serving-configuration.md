@@ -1256,11 +1256,13 @@ generated package. Verify the stable extension ID, exact callback, scopes,
 host permissions and API/S3 CORS in the deployed environment.
 
 The accepted analytics-use decision and its reference, authorized live sample,
-AWS serving deployment, budgets/alarms, release promotion/rollback and
-1,000-user load/fault checks remain open in the [backend plan](backend-plan.md).
+monthly budget, production rollout/rollback and 1,000-user load/fault checks
+remain open in the [backend plan](backend-plan.md). The development AWS stack,
+operational alarms and initial release promotion are now deployed.
 The user-reported audit submission on 2026-10-15 leaves approval pending.
-Checked-in serving approval/live flags and client connection defaults remain
-disabled.
+Serving approval/live flags remain disabled. The configured website can use
+the deployed Cognito/API connection; the extension still needs its actual
+Chrome ID and generated connection package.
 
 ## Website connection and first AWS deployment
 
@@ -1408,3 +1410,19 @@ is the one that uses the real API. A real account sign-in and bounded live video
 sample still need verification after AWS permissions, deployment and the
 recorded live-use prerequisites are in place. No load/capacity result is implied
 by the connection tests.
+
+### Verified development deployment ? 15 October 2026
+
+`CommentLensServing-development` reached `UPDATE_COMPLETE`. The deployed Linux
+verifier passed all eight golden comments before the immutable model manifest
+was registered and promoted in DynamoDB. API liveness returned `200`, protected
+routes rejected missing and invalid bearer tokens, and CORS allowed only the
+configured website/local origins. Cognito signing keys, discovery metadata and
+the hosted login page were reachable. These checks do not establish that a
+user has completed sign-in or that live video analysis works.
+
+The stack uses the explicit shared development concurrency mode, with a
+two-worker queue cap. Live YouTube fetching and its queue mapping remain
+disabled pending the accepted analytics-use decision/reference. The real local
+website is staged in `artifacts/serving-web`; it must replace the older fixture
+server before the local URL uses this connection.
