@@ -33,6 +33,11 @@ class PagesSiteTests(unittest.TestCase):
             (self.source / name).write_bytes((ROOT / "extension" / name).read_bytes())
         (self.source / "dashboard.html").write_text(
             '<!doctype html><script type="module" src="dashboard.mjs"></script>', encoding="utf-8")
+        (self.source / "index.html").write_text(
+            '<!doctype html><script type="module" src="home.mjs"></script>', encoding="utf-8")
+        (self.source / "home.mjs").write_text(
+            'const {webClientSettings} = await import("./web-client-settings.mjs");\n'
+            'if (webClientSettings.enabled) await import("./web-session-store.mjs");', encoding="utf-8")
         (self.source / "dashboard.mjs").write_text(
             'import {configureService} from "./dashboard-app.mjs";\n'
             'const {webClientSettings} = await import("./web-client-settings.mjs");', encoding="utf-8")
@@ -64,6 +69,10 @@ class PagesSiteTests(unittest.TestCase):
         settings_revision = re.search(r'web-client-settings\.mjs\?v=([0-9a-f]{64})', bootstrap).group(1)
         self.assertEqual(html_revision, settings_revision)
         self.assertIn(f'"./dashboard-app.mjs?v={html_revision}"', bootstrap)
+        home_html = (self.output / "index.html").read_text(encoding="utf-8")
+        self.assertIn(f'home.mjs?v={html_revision}', home_html)
+        home = (self.output / "home.mjs").read_text(encoding="utf-8")
+        self.assertIn(f'./web-client-settings.mjs?v={html_revision}', home)
         return settings_revision
 
     def test_default_demo_has_no_authentication_or_backend_assets_and_ignores_source_settings(self):
@@ -74,6 +83,24 @@ class PagesSiteTests(unittest.TestCase):
         self.assertIn('"enabled": false', module)
         self.assertNotIn(PRIVATE, module)
         self.assertTrue(all(PRIVATE not in path.read_text(encoding="utf-8") for path in output.rglob("*") if path.is_file()))
+
+    @unittest.skipUnless(NODE, "Node is required for enabled public settings")
+    def test_homepage_session_helper_is_published_and_versioned_only_when_enabled(self):
+        original_html = (self.source / "index.html").read_bytes()
+        original_module = (self.source / "home.mjs").read_bytes()
+        build_site(self.source, self.output)
+        demo_revision = self.bootstrap_revision()
+        self.assertNotIn("web-session-store.mjs", self.files())
+        demo_module = (self.output / "home.mjs").read_text(encoding="utf-8")
+        self.assertIn('import("./web-session-store.mjs")', demo_module)
+        build_site(self.source, self.output, self.settings())
+        enabled_revision = self.bootstrap_revision()
+        self.assertNotEqual(demo_revision, enabled_revision)
+        self.assertIn("web-session-store.mjs", self.files())
+        enabled_module = (self.output / "home.mjs").read_text(encoding="utf-8")
+        self.assertIn(f'import("./web-session-store.mjs?v={enabled_revision}")', enabled_module)
+        self.assertEqual((self.source / "index.html").read_bytes(), original_html)
+        self.assertEqual((self.source / "home.mjs").read_bytes(), original_module)
 
     @unittest.skipUnless(NODE, "Node is required for enabled public settings")
     def test_configured_site_adds_only_the_web_connection_allowlist(self):
@@ -139,7 +166,8 @@ class PagesSiteTests(unittest.TestCase):
     def test_css_changes_version_stylesheet_links_and_module_graph_without_editing_source(self):
         pages = {
             "dashboard.html": '<link rel="stylesheet" href="styles.css"><script type="module" src="dashboard.mjs"></script>',
-            "index.html": "<link href='./styles.css' rel='stylesheet'><link rel='stylesheet' href='home.css'>",
+            "index.html": "<link href='./styles.css' rel='stylesheet'><link rel='stylesheet' href='home.css'>"
+                          '<script type="module" src="home.mjs"></script>',
             "privacy.html": '<link rel="stylesheet" href="privacy.css">',
             "terms.html": '<link rel="stylesheet" href="privacy.css">',
         }
@@ -178,14 +206,15 @@ class PagesSiteTests(unittest.TestCase):
             '<script>const example = \'<link rel="stylesheet" href="styles.css">\';</script>',
         ]
         source = ('<!doctype html><html><head><LINK HREF="styles.css" REL="stylesheet" media="screen">'
-                  "<link rel='stylesheet' href='home.css'/>" + "".join(untouched) + '</head><body>Comment Lens</body></html>')
+                  "<link rel='stylesheet' href='home.css'/>" + "".join(untouched)
+                  + '<script type="module" src="home.mjs"></script></head><body>Comment Lens</body></html>')
         (self.source / "index.html").write_text(source, encoding="utf-8")
         build_site(self.source, self.output)
         revision = self.bootstrap_revision()
         staged = (self.output / "index.html").read_text(encoding="utf-8")
         self.assertIn(f'<LINK HREF="styles.css?v={revision}" REL="stylesheet" media="screen">', staged)
         self.assertIn(f"<link rel='stylesheet' href='home.css?v={revision}'/>", staged)
-        self.assertEqual(staged.count(f"?v={revision}"), 2)
+        self.assertEqual(staged.count(f"?v={revision}"), 3)
         for fragment in untouched:
             self.assertIn(fragment, staged)
         self.assertEqual((self.source / "index.html").read_text(encoding="utf-8"), source)
@@ -254,6 +283,8 @@ class PagesSiteTests(unittest.TestCase):
 
     def test_missing_or_duplicate_bootstrap_markers_fail_before_writing_output(self):
         for name, value in (("dashboard.html", '<script src="dashboard.mjs"></script>'),
+                            ("index.html", '<script src="home.mjs"></script>'),
+                            ("index.html", '<script type="module" src="home.mjs"></script>' * 2),
                             ("dashboard.mjs", 'import("./web-client-settings.mjs");import("./web-client-settings.mjs");')):
             with self.subTest(asset=name):
                 path = self.source / name

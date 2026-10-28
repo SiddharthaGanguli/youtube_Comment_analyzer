@@ -25,6 +25,8 @@ and [Signup](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashbo
 links open the dashboard's account section. Accept the Terms of Service and
 Privacy Policy before continuing to Amazon Cognito. Signup includes email
 confirmation. Click the Comment Lens logo in the dashboard to return home.
+Website sign-in survives reloads and Home/Dashboard navigation in the same tab
+until its short access-token expiry or **Sign out**; browsing does not extend it.
 
 The static [Comment Lens homepage](https://siddharthaganguli.github.io/youtube_Comment_analyzer/),
 [Privacy Policy](https://siddharthaganguli.github.io/youtube_Comment_analyzer/privacy.html)

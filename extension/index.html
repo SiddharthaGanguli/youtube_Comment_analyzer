@@ -8,6 +8,7 @@
   <title>Comment Lens | Demo homepage</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="home.css">
+  <script type="module" src="home.mjs"></script>
 </head>
 <body class="home">
   <a class="skip-link" href="#home-main">Skip to homepage</a>
@@ -20,8 +21,10 @@
     <nav aria-label="Main navigation">
       <div class="home-nav-primary">
         <a href="dashboard.html">Dashboard</a>
-        <a class="home-login" href="dashboard.html?auth=login#account">Login</a>
-        <a class="home-signup" href="dashboard.html?auth=signup#account">Sign up</a>
+        <a class="home-login" data-home-guest href="dashboard.html?auth=login#account">Login</a>
+        <a class="home-signup" data-home-guest href="dashboard.html?auth=signup#account">Sign up</a>
+        <span id="home-account-status" class="home-account-status" role="status" hidden>Signed in</span>
+        <button id="home-sign-out" class="home-signout" type="button" hidden>Sign out</button>
       </div>
       <div class="home-nav-legal">
         <a href="privacy.html">Privacy Policy</a>
@@ -29,6 +32,7 @@
       </div>
     </nav>
   </header>
+  <p id="home-session-message" class="home-session-message" role="status" hidden></p>
 
   <main id="home-main" class="home-main">
 

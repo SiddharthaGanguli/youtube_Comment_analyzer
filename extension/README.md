@@ -18,6 +18,9 @@ and [Signup](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashbo
 open the dashboard's account section. Accept the Terms of Service and Privacy
 Policy, then continue to Amazon Cognito; signup includes email confirmation.
 The dashboard's Comment Lens logo returns to the homepage.
+Website sign-in survives reloads and Home/Dashboard navigation in the same tab
+until its short access-token expiry or **Sign out**, including while viewing
+demo data. Browsing does not extend that expiry.
 
 The preview has a video-link input, sentiment totals, coverage, a daily chart,
 search, sentiment/confidence filters, sorting, pagination, comment details,

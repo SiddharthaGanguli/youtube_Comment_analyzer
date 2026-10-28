@@ -1268,10 +1268,18 @@ Chrome ID and generated connection package.
 
 The ordinary dashboard can now call the same authenticated job API as the
 extension. `web-auth-session.mjs` uses Cognito authorization code flow with
-S256 PKCE. Only a five-minute, single-use state/verifier record survives the
-redirect in this tab's session storage. Access tokens stay in memory; refresh
-and ID tokens are not retained. Callback credentials are removed from browser
-history before exchanging the code. Reloading requires sign-in again.
+S256 PKCE. A five-minute, single-use state/verifier record survives the
+redirect in this tab's session storage. Callback credentials are removed from
+browser history before exchanging the code. After sign-in, the website saves
+only the access token, original expiry and bounded validation metadata in tab
+session storage, bound to the configured deployment/client. The homepage and
+dashboard share that record, so reloads and same-tab navigation restore sign-in.
+Browsing does not extend the original expiry; the saved session has a one-hour
+maximum and uses a 30-second expiry margin. Invalid or expired records are
+removed when checked. Sign out, a failed OAuth attempt or an API `401` response
+clears it. Page disposal clears active work without deleting the
+saved valid session. ID and refresh tokens are not retained, local storage is
+not used for tokens, and there is no automatic refresh-token flow.
 
 `web-client-config.mjs` validates website callbacks separately from Chromium
 callbacks. The configured callback must match the dashboard's exact origin
@@ -1286,6 +1294,9 @@ Sign-in and submission require the policy checkbox. Errors stay visible in
 that workspace; they never replace a failed real request with demo comments.
 **Explore demo** remains an explicit choice. Without deployed settings, the
 page explains that live analysis is unavailable and labels its sample data.
+Demo browsing does not create a login session. A valid session from a previous
+sign-in in the same tab can remain active while viewing the labeled sample;
+the sample still makes no comment-analysis request.
 
 ### Prepare AWS permissions
 

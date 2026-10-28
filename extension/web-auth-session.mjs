@@ -1,5 +1,6 @@
 import {pkceChallenge} from "./auth-pkce.mjs";
 import {validateWebClientConfig} from "./web-client-config.mjs";
+import {readWebSession, writeWebSession, clearWebSession} from "./web-session-store.mjs";
 
 const SIGN_IN_AGE_MS = 5 * 60 * 1000;
 const SKEW_MS = 30_000;
@@ -80,13 +81,13 @@ async function readTokenResponse(response, endpoint, signal) {
   }
 }
 
-// This session deliberately keeps tokens in memory. Only the short-lived PKCE
-// attempt crosses the full-page redirect, using this tab's sessionStorage.
-// Reloading requires a fresh user sign-in; there is no refresh-token persistence.
+// Only the bounded access-token session and short-lived PKCE attempt use this
+// tab's sessionStorage. Reload/navigation preserve the original expiry; ID and
+// refresh tokens are discarded and there is no automatic refresh flow.
 export class WebAuthSession {
   #config; #location; #history; #storage; #fetch; #now; #navigate; #key;
   #session = null; #initialized = false; #initializing = null; #signing = null;
-  #active = null; #disposed = false; #generation = 0;
+  #active = null; #disposed = false; #signedOut = false; #generation = 0;
 
   constructor({config, locationApi = globalThis.location, historyApi = globalThis.history,
     storage = globalThis.sessionStorage, fetchImpl = globalThis.fetch?.bind(globalThis), now = Date.now,
@@ -135,7 +136,13 @@ export class WebAuthSession {
     return pending;
   }
 
-  get signedIn() { return !this.#disposed && !!this.#session && this.#session.expiresAtMs > this.#clock() + SKEW_MS; }
+  get signedIn() {
+    if (this.#disposed || this.#signedOut) return false;
+    try {
+      this.#session = readWebSession(this.#config, {storage: this.#storage, now: () => this.#clock()});
+      return !!this.#session;
+    } catch { this.#session = null; return false; }
+  }
 
   initialize() {
     this.#assertPage();
@@ -147,7 +154,8 @@ export class WebAuthSession {
       const fragment = new URLSearchParams(current.hash.slice(1));
       const callback = [...fragment.keys()].some(key => PRIVATE_PARAMETERS.has(key))
         || [...current.searchParams.keys()].some(key => PRIVATE_PARAMETERS.has(key));
-      if (!callback) { this.#initialized = true; return false; }
+      if (!callback) { this.#initialized = true; return this.signedIn; }
+      this.#session = null; this.#signedOut = true;
       // Remove OAuth codes, state, tokens and provider error text from browser
       // history before any network operation or UI error can display them.
       const clean = new URL(current);
@@ -157,12 +165,17 @@ export class WebAuthSession {
         clean.hash = fragment.toString();
       }
       try { this.#history.replaceState(null, "", clean.href); }
-      catch { this.#removePending(); throw failure("AUTH_UNAVAILABLE"); }
+      catch {
+        try { clearWebSession(this.#config, {storage: this.#storage}); } catch { /* Still reject the unsafe callback. */ }
+        try { this.#removePending(); } catch { /* Preserve the fixed error below. */ }
+        throw failure("AUTH_UNAVAILABLE");
+      }
       let pending;
       const controller = new AbortController();
       this.#active = controller;
       let timer;
       try {
+        clearWebSession(this.#config, {storage: this.#storage});
         pending = this.#takePending();
         const parameters = current.searchParams;
         if (current.hash || [...parameters.keys()].some(key => !CALLBACK_PARAMETERS.has(key))
@@ -188,10 +201,15 @@ export class WebAuthSession {
         if (payload.token_use !== "access" || payload.client_id !== this.#config.clientId || !requiredScopes(payload.scope)
             || !Number.isSafeInteger(payload.exp) || payload.exp * 1000 <= now + SKEW_MS) throw failure();
         if (controller.signal.aborted || generation !== this.#generation || this.#disposed) throw failure("AUTH_CANCELLED");
-        this.#session = {accessToken: data.access_token, expiresAtMs: Math.min(now + data.expires_in * 1000, payload.exp * 1000)};
+        this.#session = writeWebSession(this.#config,
+          {accessToken: data.access_token, expiresAtMs: Math.min(now + data.expires_in * 1000, payload.exp * 1000)},
+          {storage: this.#storage, now: () => now});
+        this.#signedOut = false;
         return true;
       } catch (error) {
         this.#session = null;
+        this.#signedOut = true;
+        try { clearWebSession(this.#config, {storage: this.#storage}); } catch { /* Fail closed with the original safe error. */ }
         throw failure(controller.signal.aborted || error?.code === "AUTH_CANCELLED" ? "AUTH_CANCELLED" :
           error?.code === "AUTH_UNAVAILABLE" ? "AUTH_UNAVAILABLE" : "AUTH_FAILED");
       } finally {
@@ -206,6 +224,8 @@ export class WebAuthSession {
 
   async getAccessToken() {
     await this.initialize();
+    if (!this.#disposed && !this.#signedOut)
+      this.#session = readWebSession(this.#config, {storage: this.#storage, now: () => this.#clock()});
     if (!this.signedIn) { this.#session = null; throw failure("AUTH_REQUIRED"); }
     return this.#session.accessToken;
   }
@@ -222,6 +242,8 @@ export class WebAuthSession {
         await this.initialize();
         this.#assertPage();
         if (generation !== this.#generation) throw failure("AUTH_CANCELLED");
+        this.#session = null; this.#signedOut = true;
+        clearWebSession(this.#config, {storage: this.#storage});
         this.#active = controller;
         const pending = {state: randomValue(), verifier: randomValue(), createdAtMs: this.#clock()};
         const challenge = await abortable(pkceChallenge(pending.verifier), controller.signal);
@@ -250,10 +272,13 @@ export class WebAuthSession {
   }
 
   async signOut() {
-    this.#generation++; this.#session = null;
+    this.#generation++; this.#session = null; this.#signedOut = true;
     this.#active?.abort();
-    this.#removePending();
+    let error;
+    try { clearWebSession(this.#config, {storage: this.#storage}); } catch { error = failure("AUTH_UNAVAILABLE"); }
+    try { this.#removePending(); } catch { error = failure("AUTH_UNAVAILABLE"); }
     this.#initialized = true;
+    if (error) throw error;
   }
 
   dispose() {

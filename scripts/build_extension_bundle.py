@@ -23,7 +23,7 @@ OUTPUT = ROOT / "artifacts" / "extension"
 RUNTIME_FILES = (
     "index.html", "popup.html", "dashboard.html", "privacy.html", "terms.html",
     "styles.css", "home.css", "privacy.css",
-    "popup.mjs", "dashboard.mjs", "dashboard-app.mjs", "job-controller.mjs",
+    "home.mjs", "popup.mjs", "dashboard.mjs", "dashboard-app.mjs", "job-controller.mjs",
     "lib.mjs", "demo-data.mjs", "client-config.mjs", "auth-session.mjs",
     "auth-pkce.mjs", "analysis-client.mjs", "result-model.mjs",
     "assets/developed-with-youtube.png",

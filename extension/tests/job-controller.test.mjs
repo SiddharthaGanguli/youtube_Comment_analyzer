@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {JobController} from "../job-controller.mjs";
 import {AuthSession} from "../auth-session.mjs";
+import {WebAuthSession} from "../web-auth-session.mjs";
+import {readWebSession, writeWebSession} from "../web-session-store.mjs";
 
 const NOW = Date.parse("2026-10-15T10:00:00Z");
 const VIDEO = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
@@ -351,7 +353,36 @@ test("AUTH_REQUIRED from a protected request clears every retained result and re
   h.api.status = async () => { throw error("AUTH_REQUIRED", {retryable: false}); };
   await h.advance(2000);
   assert.equal(h.controller.state.phase, "signed-out"); assert.equal(h.controller.state.analysis, null);
+  assert.equal(h.auth.signedIn, false); assert.equal(h.count("signOut"), 1);
   assert.equal(h.controller.lastSubmission, null); h.controller.dispose();
+});
+
+test("Rejected web access tokens are removed so reload cannot restore a rejected API session", async () => {
+  const config = {enabled: true, apiBaseUrl: "https://fixture.execute-api.us-east-1.amazonaws.com",
+    cognitoDomain: "https://fixture.auth.us-east-1.amazoncognito.com", clientId: "fixtureclient1",
+    redirectUri: "https://fixture.example/dashboard.html", resultBaseUrl: "https://fixture-bucket.s3.us-east-1.amazonaws.com/serving/development"};
+  const encode = value => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const token = `${encode({alg: "RS256"})}.${encode({token_use: "access", client_id: config.clientId,
+    exp: NOW / 1000 + 1800, scope: "analysis/read analysis/write"})}.fixture-signature`;
+  for (const endpoint of ["submit", "currentModel"]) {
+    const data = new Map([["preference", "preserve"]]);
+    const storage = {getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: key => data.delete(key)};
+    const options = {config, storage, now: () => NOW, locationApi: {href: config.redirectUri}, historyApi: {replaceState() {}},
+      fetchImpl: async () => assert.fail("A restored session must not fetch tokens")};
+    writeWebSession(config, {accessToken: token, expiresAtMs: NOW + 1800_000}, {storage, now: () => NOW});
+    const h = harness(); h.controller.auth = new WebAuthSession(options);
+    await h.controller.initialize(); assert.equal(h.controller.state.signedIn, true);
+    if (endpoint === "currentModel") h.api.submit = async () => analysis("SUCCEEDED");
+    h.api[endpoint] = async () => {throw error("UNAUTHORIZED", {retryable: false});};
+    await h.controller.submit(VIDEO);
+    assert.equal(h.controller.state.signedIn, false);
+    assert.equal(h.controller.state.result, null);
+    assert.equal(readWebSession(config, {storage, now: () => NOW}), null);
+    const reload = new WebAuthSession(options);
+    assert.equal(await reload.initialize(), false);
+    assert.equal(data.get("preference"), "preserve");
+    reload.dispose(); h.controller.dispose();
+  }
 });
 
 test("Session synchronization adopts a new sign-in, clears old account data and ignores stale checks", async () => {

@@ -20,7 +20,7 @@
   <main>
     <article id="terms">
       <h1>Terms of Service</h1>
-      <p class="policy-meta">Comment Lens | Version 0.3 | Last updated: 15 October 2026</p>
+      <p class="policy-meta">Comment Lens | Version 0.4 | Last updated: 28 October 2026</p>
       <p class="notice"><strong>Modes and availability:</strong> The public demo uses handwritten sample comments, and synthetic test previews use fixed test data. A configured, connected build can offer account sign-in and backend analysis when its deployment and YouTube access are enabled. The dashboard identifies its current mode. These terms cover both modes; a feature described here may not be available in the build you are using.</p>
 
       <h2>1. Who provides Comment Lens</h2>
@@ -33,7 +33,7 @@
 
       <h2>3. What demo and connected builds provide</h2>
       <p>Demo and synthetic test modes let you explore sample charts and comments, apply filters, and export matching sample rows as CSV. In those modes, entering a real video link still displays test data. It does not fetch that video's comments or create a live sentiment analysis.</p>
-      <p>A configured, connected service can analyze up to 1,000 latest public top-level comments for a selected public video when live fetching is enabled. This sample excludes replies and may not represent the entire audience. Results can be cached, partial, empty, or unavailable. Account sign-in uses Amazon Cognito; website access tokens stay in page memory, while the connected extension uses trusted Chrome session storage. Reloading the website requires a fresh sign-in. Signing out clears the app's local session and does not close your account or necessarily clear the provider's sign-in cookies.</p>
+      <p>A configured, connected service can analyze up to 1,000 latest public top-level comments for a selected public video when live fetching is enabled. This sample excludes replies and may not represent the entire audience. Results can be cached, partial, empty, or unavailable. Account sign-in uses Amazon Cognito; the website keeps its access-token session in this tab's session storage, while the connected extension uses trusted Chrome session storage. Website reloads and navigation within the same tab retain sign-in until the original access-token expiry or Sign out. Browsing does not extend that expiry. Signing out clears the app's local session and does not close your account or necessarily clear the provider's sign-in cookies.</p>
       <p>Comment Lens has no billing or purchase features; any paid feature would need clear pricing and terms before you choose it.</p>
 
       <h2>4. How to interpret sentiment results</h2>

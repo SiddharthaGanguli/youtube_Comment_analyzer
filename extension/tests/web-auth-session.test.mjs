@@ -3,6 +3,7 @@ import test from "node:test";
 import {validateWebClientConfig} from "../web-client-config.mjs";
 import {WebAuthSession} from "../web-auth-session.mjs";
 import {pkceChallenge} from "../auth-pkce.mjs";
+import {readWebSession, writeWebSession, clearWebSession} from "../web-session-store.mjs";
 
 const NOW = 1_792_022_400_000;
 const PRIVATE = "private-provider-details";
@@ -79,7 +80,7 @@ test("Website settings preserve common backend limits and keep extension callbac
     assert.throws(() => validateWebClientConfig({...config, ...update}));
 });
 
-test("A normal website load does not redirect, fetch, or restore a token from storage", async () => {
+test("A normal signed-out website load does not redirect, fetch, or read unrelated tokens", async () => {
   let fetched = false;
   const {auth, navigations, storage} = setup({href: `${config.redirectUri}?video=MSNA5bZYvFQ#comments`,
     fetchImpl: async () => { fetched = true; return tokenResponse(); }});
@@ -174,13 +175,85 @@ test("Returning callback removes private URL parameters before a one-use token e
   assert.equal(body.get("code_verifier"), request.pending.verifier); assert.equal(body.get("redirect_uri"), config.redirectUri);
   assert.equal(body.get("client_id"), config.clientId); assert.equal(body.get("grant_type"), "authorization_code");
   assert.ok(options.signal instanceof AbortSignal);
-  assert.deepEqual([...callback.storage.data], [["dashboard.preference", "preserve"]]);
-  assert.ok(!JSON.stringify([...callback.storage.data]).includes(jwt()));
+  assert.equal(callback.storage.data.get("dashboard.preference"), "preserve");
+  assert.deepEqual(readWebSession(config, {storage: callback.storage, now: () => NOW}),
+    {accessToken: jwt(), expiresAtMs: NOW + 3_600_000});
+  const saved = JSON.stringify([...callback.storage.data]);
+  assert.ok(!saved.includes("discard-this-id-token"));
+  assert.ok(!saved.includes("discard-this-refresh-token"));
+  assert.ok(!saved.includes(request.pending.verifier));
   callback.auth.dispose();
-  const reload = setup({storage: callback.storage});
-  assert.equal(await reload.auth.initialize(), false); reload.auth.dispose();
+  const reload = setup({storage: callback.storage, fetchImpl: async () => assert.fail("Restore must not fetch a token")});
+  assert.equal(await reload.auth.initialize(), true);
+  assert.equal(await reload.auth.getAccessToken(), jwt());
+  reload.auth.dispose();
   const replay = setup({storage: callback.storage, href: request.href});
   await assert.rejects(replay.auth.initialize(), {code: "AUTH_FAILED"}); replay.auth.dispose();
+  assert.equal(readWebSession(config, {storage: callback.storage, now: () => NOW}), null);
+});
+
+test("Reload and Home navigation restore one tab session without sliding expiry, and Home sign-out clears it", async () => {
+  const request = await requestFixture();
+  const callback = setup({storage: request.storage, href: request.href});
+  await callback.auth.initialize(); callback.auth.dispose();
+  const original = readWebSession(config, {storage: request.storage, now: () => NOW});
+  // The homepage can inspect the same scoped store without constructing a
+  // dashboard-only auth session. Neither operation renews the token.
+  assert.deepEqual(readWebSession(config, {storage: request.storage, now: () => NOW + 600_000}), original);
+  const returning = setup({storage: request.storage, now: () => NOW + 600_000,
+    fetchImpl: async () => assert.fail("Reload must reuse the bounded access token")});
+  assert.equal(await returning.auth.initialize(), true);
+  assert.equal(await returning.auth.getAccessToken(), jwt());
+  assert.deepEqual(readWebSession(config, {storage: request.storage, now: () => NOW + 600_000}), original);
+  returning.auth.dispose();
+  clearWebSession(config, {storage: request.storage});
+  const afterLogout = setup({storage: request.storage});
+  assert.equal(await afterLogout.auth.initialize(), false);
+  afterLogout.auth.dispose();
+});
+
+test("Callback URL-cleanup failure clears the old access session and its pending PKCE attempt", async () => {
+  const request = await requestFixture(); let exchanges = 0;
+  writeWebSession(config, {accessToken: jwt(), expiresAtMs: NOW + 1800_000}, {storage: request.storage, now: () => NOW});
+  const auth = new WebAuthSession({config, storage: request.storage, now: () => NOW,
+    locationApi: {href: request.href}, historyApi: {replaceState() {throw new Error(PRIVATE);}},
+    fetchImpl: async () => {exchanges++; return tokenResponse();}});
+  await assert.rejects(auth.initialize(), error => error.code === "AUTH_UNAVAILABLE" && !error.message.includes(PRIVATE));
+  assert.equal(auth.signedIn, false);
+  assert.equal(exchanges, 0);
+  assert.equal(request.storage.getItem(request.pendingKey), null);
+  assert.equal(readWebSession(config, {storage: request.storage, now: () => NOW}), null);
+  assert.deepEqual([...request.storage.data], [["dashboard.preference", "preserve"]]);
+  auth.dispose();
+  const normalLoad = setup({storage: request.storage});
+  assert.equal(await normalLoad.auth.initialize(), false);
+  normalLoad.auth.dispose();
+});
+
+test("A new login or signup clears the previous identity before leaving the page", async () => {
+  for (const entry of ["signIn", "signUp"]) {
+    const storage = storageFixture();
+    writeWebSession(config, {accessToken: jwt(), expiresAtMs: NOW + 1800_000}, {storage, now: () => NOW});
+    const page = setup({storage});
+    assert.equal(await page.auth.initialize(), true);
+    const pending = page.auth[entry](), rejected = assert.rejects(pending, {code: "AUTH_CANCELLED"});
+    await until(() => page.navigations.length === 1);
+    assert.equal(readWebSession(config, {storage, now: () => NOW}), null);
+    page.auth.dispose(); await rejected;
+  }
+});
+
+test("Clearing or corrupting a stored session also invalidates an already-warm dashboard", async () => {
+  const storage = storageFixture();
+  writeWebSession(config, {accessToken: jwt(), expiresAtMs: NOW + 1800_000}, {storage, now: () => NOW});
+  const page = setup({storage});
+  assert.equal(await page.auth.initialize(), true);
+  const key = [...storage.data.keys()].find(key => key.startsWith("commentLens.webSession.v1:"));
+  storage.data.set(key, "not-json");
+  await assert.rejects(page.auth.getAccessToken(), {code: "AUTH_REQUIRED"});
+  assert.equal(page.auth.signedIn, false);
+  assert.equal(storage.data.has(key), false);
+  page.auth.dispose();
 });
 
 test("Website sign-in requires an exact configured page origin and path", () => {
@@ -256,7 +329,7 @@ test("Website token exchange rejects redirects, non-JSON and oversized responses
   }
 });
 
-test("A valid memory session expires with skew and sign-out never clears unrelated storage", async () => {
+test("A saved tab session expires with skew and sign-out never clears unrelated storage", async () => {
   const request = await requestFixture(); let now = NOW;
   const callback = setup({storage: request.storage, href: request.href, now: () => now});
   await callback.auth.initialize(); now += 3_570_000;
@@ -284,6 +357,21 @@ test("Sign-out cancels a hanging exchange and a late response cannot restore aut
   assert.equal(options.signal.aborted, true);
   resolve(tokenResponse()); await new Promise(done => setImmediate(done));
   assert.equal(callback.auth.signedIn, false); callback.auth.dispose();
+  assert.equal(readWebSession(config, {storage: request.storage, now: () => NOW}), null);
+});
+
+test("Failed session storage cannot turn a successful token exchange into a usable or restorable login", async () => {
+  const request = await requestFixture(), originalSet = request.storage.setItem;
+  request.storage.setItem = (key, value) => {
+    if (key.startsWith("commentLens.webSession.v1:")) throw new Error(PRIVATE);
+    originalSet(key, value);
+  };
+  const callback = setup({storage: request.storage, href: request.href});
+  await assert.rejects(callback.auth.initialize(), error => error.code === "AUTH_UNAVAILABLE" && !error.message.includes(PRIVATE));
+  assert.equal(callback.auth.signedIn, false);
+  assert.equal(readWebSession(config, {storage: request.storage, now: () => NOW}), null);
+  assert.deepEqual([...request.storage.data], [["dashboard.preference", "preserve"]]);
+  callback.auth.dispose();
 });
 
 test("The global fetch and timers keep their browser receiver", async t => {

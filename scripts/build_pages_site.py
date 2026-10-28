@@ -24,11 +24,11 @@ OUTPUT = ROOT / "_site"
 WEB_FILES = (
     "index.html", "dashboard.html", "privacy.html", "terms.html",
     "styles.css", "home.css", "privacy.css",
-    "dashboard.mjs", "dashboard-app.mjs", "demo-data.mjs", "lib.mjs",
+    "home.mjs", "dashboard.mjs", "dashboard-app.mjs", "demo-data.mjs", "lib.mjs",
     "assets/developed-with-youtube.png",
 )
 CONNECTION_FILES = (
-    "web-client-config.mjs", "web-auth-session.mjs", "auth-pkce.mjs",
+    "web-client-config.mjs", "web-auth-session.mjs", "web-session-store.mjs", "auth-pkce.mjs",
     "analysis-client.mjs", "client-config.mjs", "job-controller.mjs", "result-model.mjs",
 )
 GENERATED_SETTINGS = "web-client-settings.mjs"
@@ -183,10 +183,12 @@ def versioned_bootstrap(name, data, revision, public_modules, public_stylesheets
     This small read-graph pattern covers the checked-in import/from/dynamic
     import forms, rather than attempting to parse arbitrary JavaScript.
     """
-    if name == "dashboard.html":
-        pattern = rb'''(<script\b(?=[^>]*\btype\s*=\s*["']module["'])[^>]*\bsrc\s*=\s*)(["'])dashboard\.mjs\2'''
+    if name in {"dashboard.html", "index.html"}:
+        bootstrap = b"dashboard.mjs" if name == "dashboard.html" else b"home.mjs"
+        pattern = (rb'''(<script\b(?=[^>]*\btype\s*=\s*["']module["'])[^>]*\bsrc\s*=\s*)(["'])'''
+                   + re.escape(bootstrap) + rb'''\2''')
         def replacement(match):
-            return match[1] + match[2] + b"dashboard.mjs?v=" + revision + match[2]
+            return match[1] + match[2] + bootstrap + b"?v=" + revision + match[2]
         if len(re.findall(pattern, data)) != 1:
             raise ValueError(f"Expected exactly one website bootstrap reference in {name}")
         data = re.sub(pattern, replacement, data, count=1)

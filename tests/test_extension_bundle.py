@@ -56,7 +56,8 @@ class ExtensionBundleTests(unittest.TestCase):
         return build_extension_bundle(self.source, self.output, settings=settings, **kwargs)
 
     def test_demo_bundle_contains_only_runtime_assets_and_no_network_permissions(self):
-        for name in ("README.md", ".env", "tests/hidden.test.mjs", "config/secret.json", "backend.py"):
+        for name in ("README.md", ".env", "tests/hidden.test.mjs", "config/secret.json", "backend.py",
+                     "web-session-store.mjs", "web-auth-session.mjs", "web-client-settings.mjs"):
             target = self.source / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text("never include this", encoding="utf-8")
@@ -74,6 +75,10 @@ class ExtensionBundleTests(unittest.TestCase):
         self.assertNotIn("must-not-be-copied", module)
         self.assertEqual((built / "assets/developed-with-youtube.png").read_bytes(),
                          (self.source / "assets/developed-with-youtube.png").read_bytes())
+        self.assertEqual((built / "home.mjs").read_bytes(), (self.source / "home.mjs").read_bytes())
+        self.assertNotIn("web-session-store.mjs", actual)
+        self.assertNotIn("web-auth-session.mjs", actual)
+        self.assertNotIn("web-client-settings.mjs", actual)
 
     def test_enabled_bundle_has_exact_origins_and_normalized_public_settings(self):
         self.build(self.write_settings(self.settings()))

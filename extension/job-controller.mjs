@@ -151,7 +151,10 @@ export class JobController {
         const details = await this.api.currentModel({signal: this.abort.signal});
         if (this.current(revision) && this.state.result && details.model.release_id === result.model.release_id)
           this.emit({modelDetails: details});
-      } catch { /* A result is useful even when optional model details are unavailable. */ }
+      } catch (error) {
+        if (["UNAUTHORIZED", "AUTH_REQUIRED"].includes(error?.code)) this.fail(error, revision);
+        // A result remains useful when optional model metadata is unavailable.
+      }
     } catch (error) { this.fail(error, revision); }
     finally { if (this.loadingRevision === revision) this.loadingRevision = null; }
   }
@@ -255,6 +258,7 @@ export class JobController {
       this.cancel();
       this.#sessionToken = null;
       this.lastSubmission = null;
+      try { Promise.resolve(this.auth.signOut?.()).catch(() => {}); } catch { /* Local UI must still clear if storage is blocked. */ }
       this.emit({phase: "signed-out", signedIn: false, busy: false, analysis: null, result: null, modelDetails: null, error: {code: "UNAUTHORIZED"}});
     } else if (code === "EXPIRED") {
       this.cancel();
