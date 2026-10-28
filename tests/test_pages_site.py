@@ -136,6 +136,60 @@ class PagesSiteTests(unittest.TestCase):
         self.assertNotIn(first_revision, staged)
         self.assertEqual((self.source / "dashboard.mjs").read_bytes(), bootstrap)
 
+    def test_css_changes_version_stylesheet_links_and_module_graph_without_editing_source(self):
+        pages = {
+            "dashboard.html": '<link rel="stylesheet" href="styles.css"><script type="module" src="dashboard.mjs"></script>',
+            "index.html": "<link href='./styles.css' rel='stylesheet'><link rel='stylesheet' href='home.css'>",
+            "privacy.html": '<link rel="stylesheet" href="privacy.css">',
+            "terms.html": '<link rel="stylesheet" href="privacy.css">',
+        }
+        for name, html in pages.items():
+            (self.source / name).write_text(html, encoding="utf-8")
+        build_site(self.source, self.output)
+        first_revision = self.bootstrap_revision()
+        for name, targets in {"dashboard.html": ("styles.css",), "index.html": ("./styles.css", "home.css"),
+                              "privacy.html": ("privacy.css",), "terms.html": ("privacy.css",)}.items():
+            staged = (self.output / name).read_text(encoding="utf-8")
+            for target in targets:
+                self.assertIn(f"{target}?v={first_revision}", staged)
+        css = self.source / "styles.css"
+        css.write_bytes(css.read_bytes() + b"\nbody { background: #f6f5ef; }\n")
+        original_css = css.read_bytes()
+        build_site(self.source, self.output)
+        next_revision = self.bootstrap_revision()
+        self.assertNotEqual(first_revision, next_revision)
+        for name, original in pages.items():
+            staged = (self.output / name).read_text(encoding="utf-8")
+            self.assertIn(f"?v={next_revision}", staged)
+            self.assertNotIn(first_revision, staged)
+            self.assertEqual((self.source / name).read_text(encoding="utf-8"), original)
+        self.assertEqual(css.read_bytes(), original_css)
+        self.assertEqual((self.output / "styles.css").read_bytes(), original_css)
+
+    def test_stylesheet_versioning_preserves_external_inline_and_non_stylesheet_references(self):
+        untouched = [
+            '<link rel="stylesheet" href="https://example.com/styles.css">',
+            '<link rel="stylesheet" href="//example.com/styles.css">',
+            '<link rel="stylesheet" href="private.css">',
+            '<link rel="icon" href="styles.css">',
+            '<link rel="preload" as="style" href="home.css">',
+            '<!-- <link rel="stylesheet" href="styles.css"> -->',
+            '<style>.preview { background: url("styles.css"); }</style>',
+            '<script>const example = \'<link rel="stylesheet" href="styles.css">\';</script>',
+        ]
+        source = ('<!doctype html><html><head><LINK HREF="styles.css" REL="stylesheet" media="screen">'
+                  "<link rel='stylesheet' href='home.css'/>" + "".join(untouched) + '</head><body>Comment Lens</body></html>')
+        (self.source / "index.html").write_text(source, encoding="utf-8")
+        build_site(self.source, self.output)
+        revision = self.bootstrap_revision()
+        staged = (self.output / "index.html").read_text(encoding="utf-8")
+        self.assertIn(f'<LINK HREF="styles.css?v={revision}" REL="stylesheet" media="screen">', staged)
+        self.assertIn(f"<link rel='stylesheet' href='home.css?v={revision}'/>", staged)
+        self.assertEqual(staged.count(f"?v={revision}"), 2)
+        for fragment in untouched:
+            self.assertIn(fragment, staged)
+        self.assertEqual((self.source / "index.html").read_text(encoding="utf-8"), source)
+
     @unittest.skipUnless(NODE, "Node is required for enabled public settings")
     def test_all_transitive_published_module_imports_share_the_revision(self):
         app = ('import {demo} from "./demo-data.mjs";\n'

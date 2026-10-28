@@ -3,16 +3,26 @@
 The V1 design uses a small popup and a dashboard in a full tab. It is a
 Manifest V3 extension with plain HTML, CSS and JavaScript. The default source
 works as a demo; the bundle builder adds public deployment settings and exact
-permissions when the backend is ready.
+permissions for a configured extension. The AWS development backend and website
+connection are deployed; the extension still needs its own registered Chrome ID.
+
+Try the [sample comments demo](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html?demo=1#comments)
+without signing in. It opens 24 labeled, handwritten comments, with filters,
+search, details and CSV export. The normal
+[analysis workspace](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html)
+starts empty and offers account sign-in. Demo comments are not results for a
+video link you paste.
 
 The preview has a video-link input, sentiment totals, coverage, a daily chart,
 search, sentiment/confidence filters, sorting, pagination, comment details,
-and CSV export. All dashboard numbers come from the same 24 handwritten sample
-comments in `demo-data.mjs`. The design labels the data as a demo throughout.
-Selecting a real YouTube URL does not fetch or analyze its comments yet.
+and CSV export. Demo numbers come from the same 24 handwritten sample comments
+in `demo-data.mjs`, and the interface labels them as demo data.
+Selecting a real YouTube URL in demo mode does not fetch or analyze its comments.
 Step 7 implements the account/API connection alongside this preview. Its
 behavior is checked with offline responses and DOM fixtures. A generated
-connected bundle still needs deployed AWS settings and real Chrome validation.
+connected extension bundle still needs its assigned public settings and real
+Chrome validation. Website sign-in and authenticated submission to the
+disabled-live gate have been verified; live fetching awaits YouTube approval.
 
 ## Try it in Chrome
 
@@ -74,10 +84,11 @@ secrets, AWS credentials, a YouTube key or its secret value:
 | `pollScheduleSeconds` | Optional `[2, 5, 10]`; this is also the default |
 | `maxComments` | Optional integer from 1 to 1,000; defaults to 1,000 |
 
-There is no working production JSON in the repository because the serving
-endpoints and Cognito client have not been deployed. Use their real assigned
-values when available. Unknown fields, URL credentials, query strings and
-broader or unrelated result destinations are rejected.
+The deployed development website uses `../config/web-client.public.json`.
+That file has a website callback rather than an extension ID, so it cannot be
+used unchanged for an extension bundle. Use the real assigned AWS values and
+register the extension callback described below. Unknown fields, URL credentials,
+query strings and broader or unrelated result destinations are rejected.
 
 First load the generated demo directory and note its extension ID. Keep the
 package in that same directory when rebuilding. Its configured ID must match
@@ -89,7 +100,8 @@ distinct; there is no permission for every website.
 
 The builder creates files only. It does not deploy AWS, enable YouTube fetching
 or treat audit submission as approval. Default source settings stay disabled,
-and the public Pages dashboard always runs in demo mode.
+while the public Pages dashboard uses its separate configured website connection.
+Use `dashboard.html?demo=1#comments` to open its sample comments directly.
 
 ## Try the connected states without AWS
 
@@ -112,15 +124,17 @@ scenario clears after 15 seconds. Filters, details, CSV, retry and removal can
 be exercised against the resulting UI. Pass `--output` to the preview builder
 to choose another empty or builder-owned directory. It does not start a server.
 
-## Published demo
+## Published website and sample demo
 
-The static demo is published on GitHub Pages. These HTTPS pages and their assets
-were verified on 14 October 2026:
+The website is published on GitHub Pages. The standard dashboard opens the
+connected workspace with no comments until a verified result is available.
+The explicit sample-demo link opens the handwritten comments without sign-in:
 
 | Page | Public URL |
 | --- | --- |
 | Homepage / Primary Access | https://siddharthaganguli.github.io/youtube_Comment_analyzer/ |
-| Dashboard | https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html |
+| Analysis workspace | https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html |
+| Sample comments demo | https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html?demo=1#comments |
 | Privacy Policy | https://siddharthaganguli.github.io/youtube_Comment_analyzer/privacy.html |
 | Terms of Service | https://siddharthaganguli.github.io/youtube_Comment_analyzer/terms.html |
 
@@ -133,22 +147,26 @@ GitHub receives requests for these pages and assets and logs visitor IP addresse
 for security. Opening or reloading a dashboard URL containing a selected video
 link also sends that URL to GitHub. See the published privacy policy and
 [GitHub's Privacy Statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
-The dashboard still uses handwritten samples; live analysis, analytics-use
-approval and AWS backend deployment remain pending.
+Demo mode uses handwritten samples. The AWS development backend is deployed and
+website sign-in is verified, while accepted analytics-use approval and live
+comment analysis remain pending. Changing the input URL in demo mode never
+changes its sample into actual video results.
 
-[Publish demo pages](../.github/workflows/pages.yaml) runs on matching pushes to
+[Publish Comment Lens website](../.github/workflows/pages.yaml) runs on matching pushes to
 `main` or manual dispatch. It checks the JavaScript behavior suites, runs
 `scripts/build_pages_site.py`, uploads `_site`, and deploys through the
 `github-pages` environment. The builder publishes only its explicit allowlist:
-the homepage, dashboard and legal HTML, their CSS, demo dashboard modules,
-the official logo, and `.nojekyll`. It excludes the extension manifest/popup,
-account/API/session modules, runtime connection settings, backend, credentials,
-datasets and model artifacts. Fixture preview modules are excluded too.
+the homepage, dashboard and legal HTML, their CSS, dashboard modules, the
+official logo, and `.nojekyll`. Configured builds also include the website
+authentication/client modules and validated public connection settings. It
+excludes the extension manifest/popup and extension-only session modules,
+private backend configuration, credentials, datasets, model artifacts and
+fixture preview modules.
 
 ## Privacy policy
 
-The popup and dashboard link to `privacy.html`. It describes the current static
-preview separately from the planned live service, including YouTube data use,
+The popup and dashboard link to `privacy.html`. It describes demo mode separately
+from configured connected builds, including sign-in storage, YouTube data use,
 AWS processing, cache sharing, retention and email deletion requests. The public
 privacy contact is `siddharthaganguli0093@gmail.com`, supplied by the developer.
 The page uses local CSS and no script, remote fonts or embedded media.
@@ -165,8 +183,9 @@ Open `http://127.0.0.1:8765/privacy.html` to review the page locally.
 The PDF is prepared for the audit form's first evidence box. Use the published
 Privacy Policy URL above in the form's URL field. The policy identifies GitHub
 Pages and its hosting logs. The connected extension now has policy consent and
-session controls; real account/deployment behavior still needs verification
-before launch. The developer reported submitting the audit on 15 October 2026;
+session controls; its native Chrome account flow still needs verification.
+Website sign-in has been verified against the development deployment.
+The developer reported submitting the audit on 15 October 2026;
 an accepted analytics-use decision and case reference have not been supplied.
 
 ## Terms of Service
@@ -221,7 +240,7 @@ submitted evidence and correspondence with the audit record.
 | --- | --- |
 | `manifest.json` | Extension name, popup, and permissions |
 | `popup.html`, `popup.mjs` | Current-video detection and dashboard launch |
-| `dashboard.html`, `dashboard-app.mjs`, `dashboard.mjs` | Dashboard rendering and extension-only connection bootstrap |
+| `dashboard.html`, `dashboard-app.mjs`, `dashboard.mjs` | Dashboard rendering, explicit demo mode, and website/extension connection bootstrap |
 | `styles.css` | Shared layout, colors, typography, and responsive rules |
 | `privacy.html`, `terms.html`, `privacy.css` | Legal pages and their shared layout |
 | `index.html`, `home.css`, `assets/` | Demo homepage and official YouTube branding |
@@ -229,6 +248,7 @@ submitted evidence and correspondence with the audit record.
 | `lib.mjs` | URL parsing, filtering, summary counts, and CSV formatting |
 | `client-config.mjs`, `client-settings.mjs` | Validated public settings and disabled source defaults |
 | `auth-pkce.mjs`, `auth-session.mjs` | One-use PKCE flow and trusted access-token session |
+| `web-client-config.mjs`, `web-client-settings.mjs`, `web-auth-session.mjs` | Separate website connection settings and browser sign-in |
 | `analysis-client.mjs`, `result-model.mjs` | Authenticated API calls and verified result/view data |
 | `job-controller.mjs` | Submission, polling, retry, expiry and removal lifecycle |
 
@@ -258,8 +278,8 @@ when a sentiment filter is selected. Demo status, skipped counts, and the
 meaning of confidence stay visible. Those earlier demo checks do not establish
 that the new connected screens work in native Chrome. The current stage's
 native Chrome verification was blocked by the browser control's URL safety
-check. Connected desktop/mobile layout, keyboard/accessibility, real sign-in
-and deployed end-to-end checks remain pending; DOM fixtures do not replace them.
+check. Connected extension layout, keyboard/accessibility, native extension
+sign-in and live-analysis checks remain pending; DOM fixtures do not replace them.
 
 ## Backend handoff
 
@@ -302,7 +322,8 @@ Removal deletes the owned history reference, while shared work/results follow
 the backend's retention rules. Sign-out, account changes and expiry clear
 displayed account results and stop stale requests from repainting the UI.
 
-YouTube/AWS credentials stay in the backend. Real Cognito sign-in, the approved
-live sample, AWS deployment and load testing remain pending. See the
+YouTube/AWS credentials stay in the backend. The AWS development service and
+website Cognito sign-in are deployed and verified. The approved live sample,
+native extension sign-in and load testing remain pending. See the
 [connection walkthrough](../docs/serving-configuration.md#extension-connection-and-generated-bundles)
 for the implementation order and remaining checks.

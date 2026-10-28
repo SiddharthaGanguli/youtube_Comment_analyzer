@@ -10,38 +10,364 @@
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to dashboard</a>
+
+  <!-- Modern Navigation Sidebar -->
   <aside class="sidebar">
-    <a class="brand" href="dashboard.html"><span class="brand-icon" aria-hidden="true">▰</span> Comment Lens</a>
-    <p class="sidebar-caption">YOUTUBE COMMENT ANALYZER</p>
-    <nav aria-label="Dashboard"><a href="#overview" class="nav-link active" aria-current="location"><span aria-hidden="true">◫</span> Overview</a><a href="#comments" class="nav-link"><span aria-hidden="true">☷</span> Comments <span id="nav-count" class="nav-count">24</span></a><a href="#analysis-details" class="nav-link"><span aria-hidden="true">ⓘ</span> Analysis details</a></nav>
-    <div class="sidebar-bottom"><div class="status-dot"></div><span id="sidebar-status">Demo preview</span><p>Comment Lens · v0.1</p></div>
+    <div class="sidebar-brand-wrap">
+      <a class="brand" href="dashboard.html">
+        <span class="brand-icon" aria-hidden="true">▰</span>
+        <span class="brand-text">Comment Lens</span>
+      </a>
+      <p class="sidebar-caption">AUDIENCE INTELLIGENCE</p>
+    </div>
+
+    <nav aria-label="Dashboard">
+      <a href="#overview" class="nav-link active" aria-current="location">
+        <span class="nav-icon" aria-hidden="true">◫</span>
+        <span class="nav-title">Overview</span>
+      </a>
+      <a href="#comments" class="nav-link">
+        <span class="nav-icon" aria-hidden="true">☷</span>
+        <span class="nav-title">Comments</span>
+        <span id="nav-count" class="nav-count">24</span>
+      </a>
+      <a href="#analysis-details" class="nav-link">
+        <span class="nav-icon" aria-hidden="true">ⓘ</span>
+        <span class="nav-title">Analysis details</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="status-container">
+        <div class="status-dot"></div>
+        <span id="sidebar-status">Demo preview</span>
+      </div>
+      <p>Comment Lens · v0.1</p>
+    </div>
   </aside>
+
+  <!-- Workspace Container -->
   <div class="workspace">
-    <header class="topbar"><span>Workspace <span class="breadcrumb">/</span> <strong>Video analysis</strong></span><span class="badge preview" id="mode-badge">Demo data</span></header>
+    <!-- Glassmorphic Topbar -->
+    <header class="topbar">
+      <div class="topbar-breadcrumbs">
+        <span>Workspace</span>
+        <span class="breadcrumb">/</span>
+        <strong>Video analysis</strong>
+      </div>
+      <div class="topbar-actions">
+        <span class="badge preview" id="mode-badge">Demo data</span>
+      </div>
+    </header>
+
+    <!-- Main Workspace Content -->
     <main id="main">
-      <div class="page-heading" id="overview"><div><span class="eyebrow">YOUR AUDIENCE, AT A GLANCE</span><h1>Understand the conversation.</h1><p class="muted">A little clarity behind every comment.</p></div><button class="button" id="export" type="button"><span aria-hidden="true">↓</span> Export CSV</button></div>
-      <div class="preview-banner" id="demo-banner"><span class="info-icon" aria-hidden="true">i</span><p id="demo-banner-copy"><strong>You're viewing a design preview.</strong> Charts and comments use handwritten sample data. Live comments are not connected on this page.</p></div>
+      <!-- Page Heading & Actions -->
+      <div class="page-heading" id="overview">
+        <div>
+          <span class="eyebrow">THE CONVERSATION WORKSPACE</span>
+          <h1>Your audience. In focus.</h1>
+          <p class="muted">Turn the comment section into a clearer picture.</p>
+        </div>
+        <button class="button" id="export" type="button">
+          <span aria-hidden="true">↓</span> Export CSV
+        </button>
+      </div>
+
+      <!-- Demo Notification Banner -->
+      <div class="preview-banner" id="demo-banner">
+        <span class="info-icon" aria-hidden="true">i</span>
+        <p id="demo-banner-copy"><strong>You're viewing a design preview.</strong> Charts and comments use handwritten sample data. Live comments are not connected on this page.</p>
+      </div>
+
+      <!-- Analysis Connection Panel -->
       <section class="connection-panel" id="connection-panel" aria-label="Analysis connection" hidden>
-        <div><strong id="connection-title">Demo workspace</strong><p id="connection-copy"></p></div>
-        <div class="connection-actions"><button class="button" id="use-service" type="button">Use analysis service</button><button class="button" id="show-demo" type="button" hidden>Explore demo</button><button class="button primary" id="sign-in" type="button" hidden>Sign in</button><button class="button" id="sign-out" type="button" hidden>Sign out</button></div>
-        <label class="policy-consent" id="policy-consent" hidden><input id="accept-policy" type="checkbox"> <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> before using the analysis service.</span></label>
+        <div>
+          <strong id="connection-title">Demo workspace</strong>
+          <p id="connection-copy"></p>
+        </div>
+        <div class="connection-actions">
+          <button class="button" id="use-service" type="button">Use analysis service</button>
+          <button class="button" id="show-demo" type="button" hidden>Explore demo</button>
+          <button class="button primary" id="sign-in" type="button" hidden>Sign in</button>
+          <button class="button" id="sign-out" type="button" hidden>Sign out</button>
+        </div>
+        <label class="policy-consent" id="policy-consent" hidden>
+          <input id="accept-policy" type="checkbox">
+          <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> before using the analysis service.</span>
+        </label>
       </section>
-      <section class="job-status" id="job-status" role="status" aria-live="polite" hidden><p id="job-message"></p><p id="job-progress" class="muted"></p><div class="connection-actions"><button class="button" id="retry-analysis" type="button" hidden>Retry this request</button><button class="text-button" id="remove-analysis" type="button" hidden>Remove from my history</button></div></section>
-      <form id="video-form" class="video-form"><label class="sr-only" for="video-url">YouTube video URL</label><span aria-hidden="true">↗</span><input id="video-url" type="url" placeholder="Paste a YouTube video link…" autocomplete="off"><button class="button primary" id="submit-video" type="submit">Check video link</button></form>
+
+      <!-- Asynchronous Job Status Indicator -->
+      <section class="job-status" id="job-status" role="status" aria-live="polite" hidden>
+        <p id="job-message"></p>
+        <p id="job-progress" class="muted"></p>
+        <div class="connection-actions">
+          <button class="button" id="retry-analysis" type="button" hidden>Retry this request</button>
+          <button class="text-button" id="remove-analysis" type="button" hidden>Remove from my history</button>
+        </div>
+      </section>
+
+      <!-- Video URL Command Bar Input -->
+      <form id="video-form" class="video-form">
+        <label class="sr-only" for="video-url">YouTube video URL</label>
+        <span aria-hidden="true" class="search-symbol">↗</span>
+        <input id="video-url" type="url" placeholder="Paste a YouTube video link (e.g., https://www.youtube.com/watch?v=...)" autocomplete="off">
+        <button class="button primary" id="submit-video" type="submit">Check video link</button>
+      </form>
       <p id="video-mode-note" class="detail-note">Live comments are not connected on this page. Changing the link does not change the handwritten sample comments.</p>
       <p id="video-feedback" class="form-feedback" role="status" hidden></p>
-      <div id="analysis-content"><section class="video-card" id="video-card" aria-label="Selected demo video"><div id="video-thumbnail" class="thumbnail" aria-hidden="true"><span class="thumbnail-caption">MY FIRST<br><strong>ML PROJECT</strong></span><span class="play">▶</span><span class="duration">12:48</span></div><div class="video-copy"><span class="eyebrow" id="video-eyebrow">DEMO VIDEO</span><h2 id="video-title"></h2><p><span id="video-channel"></span><span class="middle-dot">·</span> Sample window: <span id="video-sample-period">Oct 1-7, 2026</span></p><div class="video-tags"><span class="badge"><span class="dot violet"></span> Sentiment analysis</span><span class="badge"><span class="dot green-dot"></span> Preview ready</span></div></div></section>
-      <section class="stats" aria-label="Sentiment summary"><article class="stat"><div class="stat-label"><span id="analyzed-stat-label">Comments analyzed</span> <span aria-hidden="true">☷</span></div><strong id="total-stat">24</strong><p id="coverage-stat">of 28 fetched · 85.7% coverage</p></article><article class="stat"><div class="stat-label">Positive <span class="sentiment-symbol positive-text" aria-hidden="true">☺</span></div><strong id="positive-stat">58.3<span>%</span></strong><p id="positive-count">14 comments</p></article><article class="stat"><div class="stat-label">Neutral <span class="sentiment-symbol neutral-text" aria-hidden="true">⊙</span></div><strong id="neutral-stat">25.0<span>%</span></strong><p id="neutral-count">6 comments</p></article><article class="stat"><div class="stat-label">Negative <span class="sentiment-symbol negative-text" aria-hidden="true">☹</span></div><strong id="negative-stat">16.7<span>%</span></strong><p id="negative-count">4 comments</p></article></section>
-      <div class="charts-grid"><section class="panel sentiment-panel"><div class="panel-heading"><div><h2>Audience sentiment</h2><p>The balance of the conversation</p></div><span class="badge" id="chart-count">24 analyzed</span></div><div class="sentiment-content"><div class="donut" id="donut" role="img" aria-label="14 positive, 6 neutral, 4 negative comments"><div><strong id="donut-total">24</strong><span>comments</span></div></div><div class="legend" id="legend"></div></div></section><section class="panel trend-panel"><div class="panel-heading"><div><h2>Conversation over time</h2><p>Comments by day and sentiment</p></div><span class="badge" id="trend-period">7 UTC periods</span></div><div class="trend" id="trend" role="img"></div><div class="trend-legend"><span><i class="positive-bg"></i>Positive</span><span><i class="neutral-bg"></i>Neutral</span><span><i class="negative-bg"></i>Negative</span></div></section></div>
-      <section class="review-callout"><span class="review-icon" aria-hidden="true">◈</span><div><strong><span id="review-count">5</span> comments could use a closer look</strong><p id="review-explanation">Scores below 60% may reflect mixed or ambiguous sentiment.</p></div><button class="text-button" id="show-review" type="button">Review comments <span aria-hidden="true">→</span></button></section>
-      <section class="panel comments-panel" id="comments"><div class="panel-heading"><div><h2>Explore comments</h2><p id="comments-subtitle">Explore handwritten sample comments.</p></div><span class="badge" id="result-badge">24 results</span></div><div class="comment-controls"><div class="filters" role="group" aria-label="Filter by sentiment"></div><div class="search-sort"><div class="search-field"><span aria-hidden="true">⌕</span><label class="sr-only" for="search">Search comments or authors</label><input id="search" type="search" placeholder="Search comments or authors…"></div><label class="sr-only" for="sort">Sort comments</label><select id="sort"><option value="likes">Most liked</option><option value="recent">Newest first</option><option value="confidence">Lowest confidence</option></select></div></div><div class="review-filter"><label><input type="checkbox" id="review-only"> <span id="review-filter-label">Only comments below 60% confidence</span></label><button class="text-button" id="reset-filters" type="button" hidden>Clear filters</button></div><div class="table-wrap"><table><thead><tr><th scope="col">Comment</th><th scope="col">Sentiment</th><th scope="col">Confidence <span title="Highest model class score; not a calibrated probability of correctness." aria-label="Highest model class score">ⓘ</span></th><th scope="col">Likes</th><th scope="col">Published</th><th scope="col"><span class="sr-only">Details</span></th></tr></thead><tbody id="comment-rows"></tbody></table><div id="empty-state" class="empty-state" hidden><span aria-hidden="true">⌕</span><h3>No comments match your filters.</h3><p>Try another word or clear the sentiment filter.</p><button class="button" id="empty-reset" type="button">Clear filters</button></div></div><div class="table-footer"><span id="page-info" aria-live="polite"></span><div class="pagination"><button class="button small" id="previous" type="button" aria-label="Previous page">←</button><span id="page-number"></span><button class="button small" id="next" type="button" aria-label="Next page">→</button></div></div></section>
-      <section class="details-grid" id="analysis-details"><article class="panel detail-panel"><span class="eyebrow">ANALYSIS COVERAGE</span><h2>Know what went into the results.</h2><dl><div><dt>Reported video comments</dt><dd id="video-comment-total">Sample fixture</dd></div><div><dt>Unique comments received</dt><dd id="fetched-count">28</dd></div><div><dt>Comments analyzed</dt><dd id="analyzed-count">24</dd></div><div><dt>Skipped comments</dt><dd id="skipped-count">4</dd></div><div><dt>Sample period</dt><dd id="sample-period">Oct 1-7, 2026</dd></div></dl><p class="detail-note" id="coverage-note"></p><p class="detail-note" id="skipped-breakdown"></p><p class="detail-note" id="sample-expiry"></p></article><article class="panel detail-panel"><span class="eyebrow">ABOUT THE ANALYSIS</span><h2>A useful signal. Read the context.</h2><p class="detail-note">Each comment gets a positive, neutral, or negative label. Confidence is the highest model class score; it does not guarantee a correct prediction.</p><div class="model-details"><span class="badge model-release" id="model-release">V1 baseline</span><strong>TF-IDF + logistic regression</strong><p id="model-quality"></p></div><p class="detail-note">The baseline is measured against supplied dataset labels, with manual label review still pending. Sarcasm, mixed opinions, and unfamiliar languages need extra care.</p></article></section>
+
+      <!-- Dynamic Analysis Content Area -->
+      <div id="analysis-content">
+        <!-- Media Preview Card -->
+        <section class="video-card" id="video-card" aria-label="Selected demo video">
+          <div id="video-thumbnail" class="thumbnail" aria-hidden="true">
+            <span class="thumbnail-caption">MY FIRST<br><strong>ML PROJECT</strong></span>
+            <span class="play">▶</span>
+            <span class="duration">12:48</span>
+          </div>
+          <div class="video-copy">
+            <span class="eyebrow" id="video-eyebrow">DEMO VIDEO</span>
+            <h2 id="video-title"></h2>
+            <p>
+              <span id="video-channel"></span>
+              <span class="middle-dot">·</span>
+              Sample window: <span id="video-sample-period">Oct 1-7, 2026</span>
+            </p>
+            <div class="video-tags">
+              <span class="badge"><span class="dot violet"></span> Sentiment analysis</span>
+              <span class="badge"><span class="dot green-dot"></span> Preview ready</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- KPI Metrics Grid (4 Stat Cards) -->
+        <section class="stats" aria-label="Sentiment summary">
+          <article class="stat stat-total">
+            <div class="stat-label">
+              <span id="analyzed-stat-label">Comments analyzed</span>
+              <span class="stat-icon" aria-hidden="true">☷</span>
+            </div>
+            <strong id="total-stat">24</strong>
+            <p id="coverage-stat">of 28 fetched · 85.7% coverage</p>
+          </article>
+          <article class="stat stat-positive">
+            <div class="stat-label">
+              Positive
+              <span class="sentiment-symbol positive-text" aria-hidden="true">☺</span>
+            </div>
+            <strong id="positive-stat">58.3<span>%</span></strong>
+            <p id="positive-count">14 comments</p>
+          </article>
+          <article class="stat stat-neutral">
+            <div class="stat-label">
+              Neutral
+              <span class="sentiment-symbol neutral-text" aria-hidden="true">⊙</span>
+            </div>
+            <strong id="neutral-stat">25.0<span>%</span></strong>
+            <p id="neutral-count">6 comments</p>
+          </article>
+          <article class="stat stat-negative">
+            <div class="stat-label">
+              Negative
+              <span class="sentiment-symbol negative-text" aria-hidden="true">☹</span>
+            </div>
+            <strong id="negative-stat">16.7<span>%</span></strong>
+            <p id="negative-count">4 comments</p>
+          </article>
+        </section>
+
+        <!-- Charts Grid (Donut & Trend) -->
+        <div class="charts-grid">
+          <!-- Audience Sentiment Donut Card -->
+          <section class="panel sentiment-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Audience sentiment</h2>
+                <p>The balance of the conversation</p>
+              </div>
+              <span class="badge" id="chart-count">24 analyzed</span>
+            </div>
+            <div class="sentiment-content">
+              <div class="donut" id="donut" role="img" aria-label="14 positive, 6 neutral, 4 negative comments">
+                <div>
+                  <strong id="donut-total">24</strong>
+                  <span>comments</span>
+                </div>
+              </div>
+              <div class="legend" id="legend"></div>
+            </div>
+          </section>
+
+          <!-- Conversation Over Time Bar Chart Card -->
+          <section class="panel trend-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Conversation over time</h2>
+                <p>Comments by day and sentiment</p>
+              </div>
+              <span class="badge" id="trend-period">7 UTC periods</span>
+            </div>
+            <div class="trend" id="trend" role="img"></div>
+            <div class="trend-legend">
+              <span><i class="positive-bg"></i>Positive</span>
+              <span><i class="neutral-bg"></i>Neutral</span>
+              <span><i class="negative-bg"></i>Negative</span>
+            </div>
+          </section>
+        </div>
+
+        <!-- Ambiguous / Review Callout -->
+        <section class="review-callout">
+          <span class="review-icon" aria-hidden="true">◈</span>
+          <div>
+            <strong><span id="review-count">5</span> comments could use a closer look</strong>
+            <p id="review-explanation">Scores below 60% may reflect mixed or ambiguous sentiment.</p>
+          </div>
+          <button class="text-button" id="show-review" type="button">
+            Review comments <span aria-hidden="true">→</span>
+          </button>
+        </section>
+
+        <!-- Comments Explorer & Table Panel -->
+        <section class="panel comments-panel" id="comments">
+          <div class="panel-heading">
+            <div>
+              <h2>Explore comments</h2>
+              <p id="comments-subtitle">Explore handwritten sample comments.</p>
+            </div>
+            <span class="badge" id="result-badge">24 results</span>
+          </div>
+
+          <!-- Filter & Search Controls -->
+          <div class="comment-controls">
+            <div class="filters" role="group" aria-label="Filter by sentiment"></div>
+            <div class="search-sort">
+              <div class="search-field">
+                <span aria-hidden="true">⌕</span>
+                <label class="sr-only" for="search">Search comments or authors</label>
+                <input id="search" type="search" placeholder="Search comments or authors…">
+              </div>
+              <label class="sr-only" for="sort">Sort comments</label>
+              <select id="sort">
+                <option value="likes">Most liked</option>
+                <option value="recent">Newest first</option>
+                <option value="confidence">Lowest confidence</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Confidence Review Checkbox & Clear Action -->
+          <div class="review-filter">
+            <label>
+              <input type="checkbox" id="review-only">
+              <span id="review-filter-label">Only comments below 60% confidence</span>
+            </label>
+            <button class="text-button" id="reset-filters" type="button" hidden>Clear filters</button>
+          </div>
+
+          <!-- Data Table -->
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Comment</th>
+                  <th scope="col">Sentiment</th>
+                  <th scope="col">Confidence <span title="Highest model class score; not a calibrated probability of correctness." aria-label="Highest model class score">ⓘ</span></th>
+                  <th scope="col">Likes</th>
+                  <th scope="col">Published</th>
+                  <th scope="col"><span class="sr-only">Details</span></th>
+                </tr>
+              </thead>
+              <tbody id="comment-rows"></tbody>
+            </table>
+
+            <!-- Empty Filter State -->
+            <div id="empty-state" class="empty-state" hidden>
+              <span aria-hidden="true">⌕</span>
+              <h3>No comments match your filters.</h3>
+              <p>Try another word or clear the sentiment filter.</p>
+              <button class="button" id="empty-reset" type="button">Clear filters</button>
+            </div>
+          </div>
+
+          <!-- Table Pagination Footer -->
+          <div class="table-footer">
+            <span id="page-info" aria-live="polite"></span>
+            <div class="pagination">
+              <button class="button small" id="previous" type="button" aria-label="Previous page">←</button>
+              <span id="page-number"></span>
+              <button class="button small" id="next" type="button" aria-label="Next page">→</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Technical Analysis Details & Methodology Grid -->
+        <section class="details-grid" id="analysis-details">
+          <article class="panel detail-panel">
+            <span class="eyebrow">ANALYSIS COVERAGE</span>
+            <h2>Know what went into the results.</h2>
+            <dl>
+              <div><dt>Reported video comments</dt><dd id="video-comment-total">Sample fixture</dd></div>
+              <div><dt>Unique comments received</dt><dd id="fetched-count">28</dd></div>
+              <div><dt>Comments analyzed</dt><dd id="analyzed-count">24</dd></div>
+              <div><dt>Skipped comments</dt><dd id="skipped-count">4</dd></div>
+              <div><dt>Sample period</dt><dd id="sample-period">Oct 1-7, 2026</dd></div>
+            </dl>
+            <p class="detail-note" id="coverage-note"></p>
+            <p class="detail-note" id="skipped-breakdown"></p>
+            <p class="detail-note" id="sample-expiry"></p>
+          </article>
+          <article class="panel detail-panel">
+            <span class="eyebrow">ABOUT THE ANALYSIS</span>
+            <h2>A useful signal. Read the context.</h2>
+            <p class="detail-note">Each comment gets a positive, neutral, or negative label. Confidence is the highest model class score; it does not guarantee a correct prediction.</p>
+            <div class="model-details">
+              <span class="badge model-release" id="model-release">V1 baseline</span>
+              <strong>TF-IDF + logistic regression</strong>
+              <p id="model-quality"></p>
+            </div>
+            <p class="detail-note">The baseline is measured against supplied dataset labels, with manual label review still pending. Sarcasm, mixed opinions, and unfamiliar languages need extra care.</p>
+          </article>
+        </section>
       </div>
-      <footer class="page-footer">Made for understanding your audience.<span><a href="index.html" target="_blank" rel="noopener">Home</a> | <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> | <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></span><span>Comment Lens · Design preview</span></footer>
+
+      <!-- Page Footer -->
+      <footer class="page-footer">
+        <span>Made for understanding your audience.</span>
+        <span>
+          <a href="index.html" target="_blank" rel="noopener">Home</a> ·
+          <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> ·
+          <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a>
+        </span>
+        <span>Comment Lens · Design preview</span>
+      </footer>
     </main>
   </div>
-  <dialog id="comment-dialog" aria-labelledby="dialog-author"><div class="dialog-heading"><h2 id="dialog-author"></h2><button class="text-button" id="close-dialog" type="button" aria-label="Close comment details">✕</button></div><p id="dialog-text"></p><div id="dialog-meta"></div><p class="detail-note" id="dialog-note">This is a handwritten sample comment.</p></dialog>
-  <dialog id="remove-dialog" aria-labelledby="remove-title"><h2 id="remove-title">Remove this analysis?</h2><p>This ends access through your history entry. Shared work may continue and cached data follows its normal expiry. Existing download links may work briefly.</p><div class="connection-actions"><button class="button" id="cancel-remove" type="button">Keep analysis</button><button class="button primary" id="confirm-remove" type="button">Remove from my history</button></div></dialog>
+
+  <!-- Detail Dialog Modal -->
+  <dialog id="comment-dialog" aria-labelledby="dialog-author">
+    <div class="dialog-heading">
+      <h2 id="dialog-author"></h2>
+      <button class="text-button" id="close-dialog" type="button" aria-label="Close comment details">✕</button>
+    </div>
+    <p id="dialog-text"></p>
+    <div id="dialog-meta"></div>
+    <p class="detail-note" id="dialog-note">This is a handwritten sample comment.</p>
+  </dialog>
+
+  <!-- Removal Confirmation Modal -->
+  <dialog id="remove-dialog" aria-labelledby="remove-title">
+    <h2 id="remove-title">Remove this analysis?</h2>
+    <p>This ends access through your history entry. Shared work may continue and cached data follows its normal expiry. Existing download links may work briefly.</p>
+    <div class="connection-actions">
+      <button class="button" id="cancel-remove" type="button">Keep analysis</button>
+      <button class="button primary" id="confirm-remove" type="button">Remove from my history</button>
+    </div>
+  </dialog>
+
+  <!-- Interactive Toast -->
   <div id="toast" class="toast" role="status" hidden></div>
 </body>
 </html>

@@ -357,6 +357,7 @@ export function configureService(nextController, adapter, {synthetic = false, st
   syntheticService = synthetic;
   isDemo = !startInService;
   controller = nextController; resultAdapter = adapter; controller.onChange = renderConnection; controller.suspended = !startInService;
+  if (isDemo) {view = demo; renderedResult = null; renderData();}
   if (syntheticService) {
     $("#remove-title").textContent = "Remove this test run?";
     $("#remove-dialog > p").textContent = "This removes the synthetic result from this preview.";

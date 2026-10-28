@@ -5,14 +5,22 @@ YouTube comment sentiment analysis with reproducible data and model pipelines.
 The Chrome extension is in [extension/](extension/README.md): a small popup
 opens a full dashboard tab with sentiment charts, coverage, filters, comment
 details and CSV export. Its backend connection is implemented and tested with
-offline fixtures. The checked-in extension and public website use labeled demo
-comments; a connected bundle requires the assigned AWS deployment settings.
+offline fixtures. The checked-in extension uses labeled demo comments; a
+connected extension bundle requires its registered ID and AWS deployment settings.
 The website now has its own Cognito browser sign-in and uses the same analysis
-API as the extension. [Deployment and website setup](docs/serving-configuration.md#website-connection-and-first-aws-deployment)
+API as the extension. The AWS development service is deployed, and website
+sign-in and the disabled-live gate have been verified.
+[Deployment and website setup](docs/serving-configuration.md#website-connection-and-first-aws-deployment)
 explains the resource template, Linux packages and generated public settings.
 
-The static [Comment Lens demo](https://siddharthaganguli.github.io/youtube_Comment_analyzer/),
-[dashboard](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html),
+Open the [sample comments demo](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html?demo=1#comments)
+to explore 24 labeled, handwritten comments without signing in. Search, filters,
+comment details and CSV export work on that sample. Pasting a video link in demo
+mode does not fetch comments or turn the sample into that video's results.
+The normal [analysis workspace](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html)
+starts empty and offers account sign-in.
+
+The static [Comment Lens homepage](https://siddharthaganguli.github.io/youtube_Comment_analyzer/),
 [Privacy Policy](https://siddharthaganguli.github.io/youtube_Comment_analyzer/privacy.html)
 and [Terms of Service](https://siddharthaganguli.github.io/youtube_Comment_analyzer/terms.html)
 are published on GitHub Pages. The demo makes no YouTube Data API or Comment
@@ -23,13 +31,14 @@ builder's allowlist of website files and validated public connection settings, e
 credentials, datasets and model artifacts. The developer reported submitting
 the YouTube audit on 15 October 2026. Submission is not analytics-use approval;
 no accepted decision or case reference has been recorded, and live fetching
-remains disabled. AWS serving deployment is still pending.
+remains disabled. The connected workspace shows that status instead of displaying
+sample comments as live results.
 
 The [serving system design](docs/system-design.md) targets 1,000 active users
 with separate API and model workers, bounded YouTube fetching, shared public
 results, durable jobs, and a low initial AWS cost. The
 [API contract](docs/backend-contract.yaml) and [backend plan](docs/backend-plan.md)
-guide the backend implementation; deployment remains pending.
+guide the deployed development backend. Load and capacity checks remain pending.
 Live YouTube sentiment analysis requires the analytics-use approval described
 in the design before it can be enabled.
 
@@ -38,7 +47,7 @@ validate configuration, persist owned jobs, coordinate worker leases and queue
 delivery, and store private results with bounded retention. AWS adapter checks
 use local fixtures. FastAPI exposes owned submission/status/download/deletion,
 current model metadata and liveness, with scope checks and safe error envelopes.
-API/worker serving infrastructure remains undeployed. Run
+API/worker serving infrastructure is deployed in the development environment. Run
 `python -m src.Sentiment_analysis.config.serving` from the project environment
 to check `config/serving.yaml`. The worker resumes page/batch checkpoints, uses
 the shared predictor with one native thread, and publishes validated private
@@ -47,12 +56,13 @@ Secrets Manager key loading, durable retry delays, public checks on resume and
 a shared quota/credential circuit. It accepts explicit development fixtures or
 the approval-gated live provider. The auth template defines Cognito, scoped gateway routes, throttles
 and alarms; an S256 PKCE helper and allowlisted serving metrics are tested too.
-Cognito deployment and authorized live verification remain pending. Step 7 adds
+Cognito is deployed and website sign-in is verified; authorized live fetching
+remains pending. Step 7 adds
 the extension's user-initiated PKCE sign-in, trusted access-token session,
 consent controls, job polling, verified result downloads and owned deletion.
 Filters and exports reuse the downloaded result. Native Chrome verification
 for this stage was blocked by the browser control's URL safety check; real
-sign-in, visual/keyboard checks and cloud end-to-end/load checks remain pending.
+extension sign-in, visual/keyboard checks and live-analysis/load checks remain pending.
 Live fetching is disabled in the checked-in settings. See the
 [YouTube walkthrough](docs/serving-configuration.md#youtube-provider-and-live-readiness)
 and [extension connection walkthrough](docs/serving-configuration.md#extension-connection-and-generated-bundles).
@@ -187,7 +197,8 @@ The JSON result is saved under `artifacts/model_prediction/`. See
 [prediction usage and the response contract](docs/prediction.md). The YouTube
 provider and extension/API connection source are implemented. The checked-in
 extension remains a demo; authorized live verification, native Chrome checks
-and the AWS serving deployment remain pending.
+and load testing remain pending. The AWS development service and connected
+website are deployed.
 
 ## MLflow experiments and stage artifacts
 

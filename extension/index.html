@@ -11,30 +11,70 @@
 </head>
 <body class="home">
   <a class="skip-link" href="#home-main">Skip to homepage</a>
+
   <header class="home-header">
-    <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">▰</span> Comment Lens</a>
+    <a class="brand" href="index.html">
+      <span class="brand-icon" aria-hidden="true">▰</span>
+      <span>Comment<span class="brand-accent">Lens</span></span>
+    </a>
     <nav aria-label="Main navigation">
       <a href="dashboard.html">Dashboard</a>
       <a href="privacy.html">Privacy Policy</a>
       <a href="terms.html">Terms of Service</a>
     </nav>
   </header>
+
   <main id="home-main" class="home-main">
+
+    <!-- ── HERO ── -->
     <section class="home-hero" aria-labelledby="home-title">
+      <div class="hero-glow" aria-hidden="true"></div>
+
       <div class="hero-copy">
-        <span class="badge preview">Development preview · Demo data</span>
-        <h1 id="home-title">Understand the<br>conversation.</h1>
-        <p class="hero-description">A clearer view of comment feedback. Explore sentiment summaries, read individual comments, and keep the context close.</p>
+        <span class="badge preview home-eyebrow">
+          <span class="home-eyebrow-dot" aria-hidden="true"></span>
+          Development preview · Demo data
+        </span>
+        <h1 id="home-title">
+          Less scrolling.<br>
+          <span class="hero-title-amber">More understanding.</span><br>
+          <span class="hero-title-dim">Meet your audience.</span>
+        </h1>
+        <p class="hero-description">Explore comment sentiment, review individual opinions, and understand the context behind each model estimate.</p>
         <div class="home-actions">
-          <a class="button primary" href="dashboard.html">Open dashboard <span aria-hidden="true">→</span></a>
-          <a class="home-install" href="https://github.com/SiddharthaGanguli/youtube_Comment_analyzer/tree/main/extension#try-it-in-chrome" target="_blank" rel="noopener noreferrer">Extension setup</a>
+          <a class="button primary home-cta" href="dashboard.html?demo=1#comments">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+            Explore demo
+          </a>
+          <a class="home-install" href="dashboard.html">Open analysis workspace</a>
         </div>
         <p class="home-demo-note">Demo mode uses 24 handwritten sample comments. A configured dashboard also offers account sign-in and video requests. The workspace shows whether live analysis is available; demo comments are never results for a pasted link.</p>
       </div>
+
+      <!-- Preview window -->
       <aside class="home-preview" aria-label="Features in the sample dashboard">
-        <div class="preview-heading"><span class="eyebrow">IN THE DEMO</span><span class="badge preview">Sample comments</span></div>
+        <div class="preview-titlebar" aria-hidden="true">
+          <span class="titlebar-dot red"></span>
+          <span class="titlebar-dot yellow"></span>
+          <span class="titlebar-dot green"></span>
+          <span class="titlebar-url">Comment Lens · Sample workspace</span>
+        </div>
+        <div class="preview-heading">
+          <span class="eyebrow">IN THE DEMO</span>
+          <span class="badge preview">Sample comments</span>
+        </div>
         <h2>A little clarity behind every comment.</h2>
-        <div class="home-sentiments"><span class="home-positive">Positive</span><span class="home-neutral">Neutral</span><span class="home-negative">Negative</span></div>
+        <div class="home-sentiments">
+          <span class="home-positive">😊 Positive</span>
+          <span class="home-neutral">😐 Neutral</span>
+          <span class="home-negative">😠 Negative</span>
+        </div>
+        <!-- Sentiment bar -->
+        <div class="preview-bar" aria-label="Sample sentiment split: 58.3% positive, 25.0% neutral, 16.7% negative">
+          <div class="preview-bar-seg pos" style="width:58.3%">58.3%</div>
+          <div class="preview-bar-seg neu" style="width:25%">25.0%</div>
+          <div class="preview-bar-seg neg" style="width:16.7%">16.7%</div>
+        </div>
         <ul class="home-feature-list">
           <li><span aria-hidden="true">✓</span> Sentiment and coverage summaries</li>
           <li><span aria-hidden="true">✓</span> Search, filters, and comment details</li>
@@ -43,6 +83,8 @@
         <p>These are sample labels. Live model estimates can be wrong; read the original context.</p>
       </aside>
     </section>
+
+    <!-- ── INFO CARDS ── -->
     <section class="home-info" aria-label="Privacy and planned integration">
       <article class="home-privacy-card">
         <span class="eyebrow">YOUR INFORMATION</span>
@@ -50,6 +92,7 @@
         <p>See what the preview handles, how the planned live service will use public comments, and how to contact the developer about deletion.</p>
         <a class="home-policy-link" href="privacy.html">Read the Privacy Policy <span aria-hidden="true">→</span></a>
       </article>
+
       <article class="home-provider-card">
         <span class="eyebrow">PLANNED API INTEGRATION</span>
         <a class="youtube-attribution" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" aria-label="Visit YouTube">
@@ -59,10 +102,56 @@
         <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube Terms of Service</a>
       </article>
     </section>
+
+    <!-- ── FEATURES GRID ── -->
+    <section class="home-features" aria-label="Key features">
+      <h2 class="home-features-title">Everything you need</h2>
+      <p class="home-features-sub">Powerful sentiment analysis, beautifully presented.</p>
+      <div class="home-features-grid">
+        <div class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true">🧠</div>
+          <div class="home-feature-name">Sentiment, simplified</div>
+          <p class="home-feature-desc">Explore positive, neutral, and negative signals with the TF-IDF and logistic regression baseline. Read the context behind each prediction.</p>
+        </div>
+        <div class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true">⚡</div>
+          <div class="home-feature-name">Fast &amp; Cached</div>
+          <p class="home-feature-desc">Explore the sample workspace instantly. Configured services show request progress and availability in the dashboard.</p>
+        </div>
+        <div class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true">📊</div>
+          <div class="home-feature-name">Rich Dashboard</div>
+          <p class="home-feature-desc">Donut charts, trend analysis, comment-level breakdown with confidence scores, and one-click CSV export.</p>
+        </div>
+        <div class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true">🔒</div>
+          <div class="home-feature-name">Privacy First</div>
+          <p class="home-feature-desc">No tracking, no data selling. Comments are only processed when you explicitly request an analysis.</p>
+        </div>
+        <div class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true">🎯</div>
+          <div class="home-feature-name">Comment Filtering</div>
+          <p class="home-feature-desc">Filter and search comments by sentiment, keyword, or confidence score.</p>
+        </div>
+        <div class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true">📤</div>
+          <div class="home-feature-name">Export &amp; Share</div>
+          <p class="home-feature-desc">Download comments matching your current filters as CSV for closer review.</p>
+        </div>
+      </div>
+    </section>
+
   </main>
+
   <footer class="home-footer">
     <span>Created by Siddhartha Ganguli</span>
-    <nav aria-label="Legal information"><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Service</a><a href="mailto:siddharthaganguli0093@gmail.com">Contact</a></nav>
+    <nav aria-label="Legal information">
+      <a href="dashboard.html?demo=1#comments">Demo comments</a>
+      <a href="https://github.com/SiddharthaGanguli/youtube_Comment_analyzer/tree/main/extension#try-it-in-chrome" target="_blank" rel="noopener noreferrer">Extension setup</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Service</a>
+      <a href="mailto:siddharthaganguli0093@gmail.com">Contact</a>
+    </nav>
     <span>Comment Lens · Development preview</span>
   </footer>
 </body>

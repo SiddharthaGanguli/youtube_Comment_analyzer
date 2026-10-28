@@ -14,6 +14,14 @@ export async function connectWebService(settings, {runtime = globalThis, depende
     const current = new URL(runtime.location.href), redirect = new URL(config.redirectUri);
     if (current.origin !== redirect.origin || current.pathname !== redirect.pathname
         || !current.pathname.endsWith("/dashboard.html")) throw new Error("Website callback does not match this dashboard");
+    // A direct demo link opts into the existing handwritten sample. OAuth
+    // callbacks always keep their real workspace, including rejected callbacks.
+    const callbackKeys = ["code", "state", "error", "error_description", "access_token", "id_token",
+      "refresh_token", "token_type", "expires_in", "scope"];
+    const fragment = new URLSearchParams(current.hash.slice(1));
+    const hasCallback = callbackKeys.some(key => current.searchParams.has(key) || fragment.has(key));
+    const startInDemo = current.searchParams.getAll("demo").length === 1
+      && current.searchParams.get("demo") === "1" && !hasCallback;
     const [{WebAuthSession}, {AnalysisClient}, {JobController}, {resultToView}] = dependencies
       ? [{WebAuthSession: dependencies.WebAuthSession}, {AnalysisClient: dependencies.AnalysisClient},
         {JobController: dependencies.JobController}, {resultToView: dependencies.resultToView}]
@@ -23,7 +31,7 @@ export async function connectWebService(settings, {runtime = globalThis, depende
       storage: runtime.sessionStorage});
     const api = new AnalysisClient({config, auth, configValidator: validateWebClientConfig});
     const controller = new JobController({api, auth, pollScheduleSeconds: config.pollScheduleSeconds, maxComments: config.maxComments});
-    configureService(controller, resultToView, {startInService: true});
+    configureService(controller, resultToView, {startInService: !startInDemo});
     await controller.initialize();
     // A full-page sign-in leaves a pending in-memory promise. Always discard
     // that session on navigation; only its short-lived PKCE record survives.

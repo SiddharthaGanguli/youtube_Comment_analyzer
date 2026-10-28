@@ -6,6 +6,7 @@ The generated module contains public URLs/IDs, never credentials or API keys.
 
 import argparse
 import hashlib
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
@@ -120,18 +121,63 @@ def write_bytes(target, data):
 
 
 def module_revision(module, source_files):
-    """Fingerprint public settings and the original, published JavaScript."""
+    """Fingerprint settings and every original, allowlisted website asset."""
     digest = hashlib.sha256()
-    modules = [(GENERATED_SETTINGS, module),
-               *((name, data) for name, data in source_files if name.endswith(".mjs"))]
-    for name, data in sorted(modules):
+    assets = [(GENERATED_SETTINGS, module), *source_files]
+    for name, data in sorted(assets):
         digest.update(name.encode("utf-8") + b"\0")
         digest.update(len(data).to_bytes(8, "big"))
         digest.update(data)
     return digest.hexdigest().encode("ascii")
 
 
-def versioned_bootstrap(name, data, revision, public_modules):
+def versioned_stylesheets(name, data, revision, public_stylesheets):
+    """Version actual local stylesheet links; leave comments and scripts alone."""
+    source = data.decode("utf-8")
+    lines = source.splitlines(keepends=True)
+    offsets = [0]
+    for line in lines:
+        offsets.append(offsets[-1] + len(line))
+
+    class StylesheetLinks(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=False)
+            self.changes = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag != "link":
+                return
+            relations = [value for key, value in attrs if key == "rel"]
+            hrefs = [value for key, value in attrs if key == "href"]
+            if (len(relations) != 1 or not relations[0]
+                    or "stylesheet" not in relations[0].lower().split()
+                    or len(hrefs) != 1 or not hrefs[0]):
+                return
+            target = posixpath.normpath(posixpath.join(posixpath.dirname(name), hrefs[0]))
+            if target not in public_stylesheets:
+                return
+            raw = self.get_starttag_text()
+            pattern = r'''(\shref\s*=\s*)(["'])(.*?)\2'''
+            version = revision.decode("ascii")
+            updated, count = re.subn(pattern, lambda match: match[1] + match[2] + match[3]
+                                    + "?v=" + version + match[2], raw, flags=re.IGNORECASE | re.DOTALL)
+            if count != 1:
+                return
+            line, column = self.getpos()
+            start = offsets[line - 1] + column
+            self.changes.append((start, start + len(raw), updated))
+
+        handle_startendtag = handle_starttag
+
+    parser = StylesheetLinks()
+    parser.feed(source)
+    parser.close()
+    for start, end, updated in reversed(parser.changes):
+        source = source[:start] + updated + source[end:]
+    return source.encode("utf-8")
+
+
+def versioned_bootstrap(name, data, revision, public_modules, public_stylesheets=()):
     """Version this site's literal module imports, preserving source assets.
 
     This small read-graph pattern covers the checked-in import/from/dynamic
@@ -143,11 +189,13 @@ def versioned_bootstrap(name, data, revision, public_modules):
             return match[1] + match[2] + b"dashboard.mjs?v=" + revision + match[2]
         if len(re.findall(pattern, data)) != 1:
             raise ValueError(f"Expected exactly one website bootstrap reference in {name}")
-        return re.sub(pattern, replacement, data, count=1)
+        data = re.sub(pattern, replacement, data, count=1)
     elif name == "dashboard.mjs":
         pattern = rb'''(\bimport\s*\(\s*)(["'])\./web-client-settings\.mjs\2(\s*\))'''
         if len(re.findall(pattern, data)) != 1:
             raise ValueError(f"Expected exactly one website bootstrap reference in {name}")
+    if name.endswith(".html"):
+        return versioned_stylesheets(name, data, revision, public_stylesheets)
     if not name.endswith(".mjs"):
         return data
     pattern = rb'''(?P<prefix>\b(?:import|export)\s+(?:[^;'"`]*?\bfrom\s*)?|\bimport\s*\(\s*)(?P<quote>["'])(?P<target>\.{1,2}/[^'"\\\r\n?#]+\.mjs)(?P=quote)'''
@@ -181,10 +229,12 @@ def build_site(source=SOURCE, output=OUTPUT, settings=None, node_executable=None
         checked.append((name, path.read_bytes()))
     revision = module_revision(module, checked)
     public_modules = {name for name in files if name.endswith(".mjs")} | {GENERATED_SETTINGS}
+    public_stylesheets = {name for name in files if name.endswith(".css")}
     # Check both bootstrap markers and rewrite the complete published module
-    # graph before touching a previous build. Every module uses the same version
-    # when either public connection settings or any JavaScript source changes.
-    checked = [(name, versioned_bootstrap(name, data, revision, public_modules)) for name, data in checked]
+    # graph and stylesheet links before touching a previous build. Every asset
+    # reference shares a revision when configuration, code or presentation changes.
+    checked = [(name, versioned_bootstrap(name, data, revision, public_modules, public_stylesheets))
+               for name, data in checked]
 
     allowed = set(WEB_FILES) | set(CONNECTION_FILES) | {GENERATED_SETTINGS, ".nojekyll"}
     allowed_directories = {parent.as_posix() for name in allowed for parent in Path(name).parents if parent != Path(".")}

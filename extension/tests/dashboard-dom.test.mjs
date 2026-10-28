@@ -111,6 +111,9 @@ test("A connected workspace starts with zero comments and restores demo counts o
 
 test("Checking a demo link explicitly explains that its comments cannot change", async t => {
   const f = await setup(t);
+  f.window.history.replaceState(null, "", "?demo=1#comments");
+  assert.equal(f.controller.suspended, true);
+  assert.deepEqual(f.calls, {submit: 0, status: 0, download: 0, remove: 0});
   const rows = f.$("#comment-rows").textContent;
   assert.equal(f.$("#submit-video").textContent, "Check video link");
   assert.ok(f.$("#video-mode-note").textContent.includes("Live comments are not connected"));
@@ -119,6 +122,8 @@ test("Checking a demo link explicitly explains that its comments cannot change",
     f.$("#video-form").dispatchEvent(new f.window.Event("submit", {cancelable: true}));
     assert.ok(f.$("#video-feedback").textContent.includes("same handwritten sample comments"));
     assert.equal(f.$("#comment-rows").textContent, rows);
+    assert.equal(new URL(f.window.location.href).searchParams.get("demo"), "1");
+    assert.deepEqual(f.calls, {submit: 0, status: 0, download: 0, remove: 0});
   }
   assert.equal(f.calls.submit, 0);
 });
