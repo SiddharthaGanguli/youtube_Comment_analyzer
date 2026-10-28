@@ -230,14 +230,21 @@ $("#video-form").addEventListener("submit", async event => {
   feedback.textContent = `Valid video link: ${video}. Live comments are not connected on this page. The dashboard shows the same handwritten sample comments.`;
 });
 
-for (const link of document.querySelectorAll(".nav-link")) {
-  link.addEventListener("click", () => {
-    for (const sibling of document.querySelectorAll(".nav-link")) {
-      sibling.classList.remove("active"); sibling.removeAttribute("aria-current");
-    }
-    link.classList.add("active"); link.setAttribute("aria-current", "location");
-  });
+const navigationLinks = [...document.querySelectorAll(".nav-link")];
+function selectNavigation(selected) {
+  for (const link of navigationLinks) {
+    link.classList.toggle("active", link === selected);
+    if (link === selected) link.setAttribute("aria-current", "location");
+    else link.removeAttribute("aria-current");
+  }
 }
+function syncNavigation() {
+  selectNavigation(navigationLinks.find(link => link.hash === location.hash)
+    || navigationLinks.find(link => link.hash === "#overview"));
+}
+for (const link of navigationLinks) link.addEventListener("click", () => selectNavigation(link));
+window.addEventListener("hashchange", syncNavigation);
+syncNavigation();
 
 const selected = youtubeVideoUrl(new URL(location.href).searchParams.get("video"));
 if (selected) $("#video-url").value = selected;

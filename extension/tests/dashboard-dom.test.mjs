@@ -15,8 +15,9 @@ async function until(check) {
   while (performance.now() < deadline) {if (check()) return; await new Promise(resolve => globalThis.setTimeout(resolve, 2));}
   assert.fail("The fixture interface did not reach the expected state");
 }
-async function setup(t, {scenario = "success", error = null, useTransport = false, synthetic = false, startInService = false} = {}) {
-  const dom = new JSDOM(markup, {url: "https://fixture.example/dashboard.html", pretendToBeVisual: true});
+async function setup(t, {scenario = "success", error = null, useTransport = false, synthetic = false,
+  startInService = false, url = "https://fixture.example/dashboard.html"} = {}) {
+  const dom = new JSDOM(markup, {url, pretendToBeVisual: true});
   const {window} = dom;
   const originals = Object.fromEntries(["document", "window", "location", "history"].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   for (const key of Object.keys(originals)) Object.defineProperty(globalThis, key, {value: window[key], configurable: true});
@@ -83,6 +84,31 @@ async function setup(t, {scenario = "success", error = null, useTransport = fals
   });
   return {$, window, controller, calls, requests, result, signIn, submit, setNow: value => {now = value;}};
 }
+
+test("A direct comments demo link initially selects Comments in the sidebar", async t => {
+  const f = await setup(t, {url: "https://fixture.example/dashboard.html?demo=1#comments"});
+  const selected = f.window.document.querySelectorAll('.nav-link.active[aria-current="location"]');
+  assert.equal(selected.length, 1);
+  assert.equal(selected[0].getAttribute("href"), "#comments");
+  assert.equal(f.$('.nav-link[href="#overview"]').hasAttribute("aria-current"), false);
+});
+
+test("Sidebar selection preserves immediate clicks and follows hash changes and browser back", async t => {
+  const f = await setup(t);
+  const selected = () => f.$('.nav-link.active[aria-current="location"]')?.getAttribute("href");
+  assert.equal(selected(), "#overview");
+  f.$('.nav-link[href="#comments"]').click();
+  assert.equal(selected(), "#comments");
+  await until(() => f.window.location.hash === "#comments");
+  f.window.location.hash = "#analysis-details";
+  await until(() => selected() === "#analysis-details");
+  assert.equal(f.window.document.querySelectorAll('.nav-link[aria-current]').length, 1);
+  f.window.history.back();
+  await until(() => f.window.location.hash === "#comments" && selected() === "#comments");
+  f.window.location.hash = "#unknown-section";
+  await until(() => selected() === "#overview");
+  assert.equal(f.window.document.querySelectorAll('.nav-link.active').length, 1);
+});
 
 test("Demo mode keeps its totals and filters, while consent gates service actions", async t => {
   const f = await setup(t);
