@@ -13,6 +13,12 @@ search, details and CSV export. The normal
 starts empty and offers account sign-in. Demo comments are not results for a
 video link you paste.
 
+On the homepage, [Login](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html?auth=login#account)
+and [Signup](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html?auth=signup#account)
+open the dashboard's account section. Accept the Terms of Service and Privacy
+Policy, then continue to Amazon Cognito; signup includes email confirmation.
+The dashboard's Comment Lens logo returns to the homepage.
+
 The preview has a video-link input, sentiment totals, coverage, a daily chart,
 search, sentiment/confidence filters, sorting, pagination, comment details,
 and CSV export. Demo numbers come from the same 24 handwritten sample comments

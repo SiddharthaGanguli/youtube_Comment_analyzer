@@ -14,7 +14,7 @@
   <!-- Modern Navigation Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-brand-wrap">
-      <a class="brand" href="dashboard.html">
+      <a class="brand" href="index.html" aria-label="Comment Lens home">
         <span class="brand-icon" aria-hidden="true">▰</span>
         <span class="brand-text">Comment Lens</span>
       </a>
@@ -81,22 +81,25 @@
       </div>
 
       <!-- Analysis Connection Panel -->
-      <section class="connection-panel" id="connection-panel" aria-label="Analysis connection" hidden>
-        <div>
-          <strong id="connection-title">Demo workspace</strong>
-          <p id="connection-copy"></p>
-        </div>
-        <div class="connection-actions">
-          <button class="button" id="use-service" type="button">Use analysis service</button>
-          <button class="button" id="show-demo" type="button" hidden>Explore demo</button>
-          <button class="button primary" id="sign-in" type="button" hidden>Sign in</button>
-          <button class="button" id="sign-out" type="button" hidden>Sign out</button>
-        </div>
-        <label class="policy-consent" id="policy-consent" hidden>
-          <input id="accept-policy" type="checkbox">
-          <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> before using the analysis service.</span>
-        </label>
-      </section>
+      <div id="account" class="account-entry">
+        <section class="connection-panel" id="connection-panel" aria-label="Analysis connection" hidden>
+          <div>
+            <strong id="connection-title">Demo workspace</strong>
+            <p id="connection-copy"></p>
+          </div>
+          <div class="connection-actions">
+            <button class="button" id="use-service" type="button">Use analysis service</button>
+            <button class="button" id="show-demo" type="button" hidden>Explore demo</button>
+            <button class="button primary" id="sign-in" type="button" hidden>Sign in</button>
+            <button class="button" id="sign-up" type="button" hidden>Sign up</button>
+            <button class="button" id="sign-out" type="button" hidden>Sign out</button>
+          </div>
+          <label class="policy-consent" id="policy-consent" hidden>
+            <input id="accept-policy" type="checkbox">
+            <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> before using the analysis service.</span>
+          </label>
+        </section>
+      </div>
 
       <!-- Asynchronous Job Status Indicator -->
       <section class="job-status" id="job-status" role="status" aria-live="polite" hidden>

@@ -47,9 +47,9 @@ async function until(predicate) {
   throw new Error("Fixture operation did not reach expected point");
 }
 
-async function requestFixture(options = {}) {
+async function requestFixture(options = {}, entry = "signIn") {
   const departing = setup(options);
-  const signIn = departing.auth.signIn();
+  const signIn = departing.auth[entry]();
   const rejected = assert.rejects(signIn, {code: "AUTH_CANCELLED"});
   await until(() => departing.navigations.length === 1);
   const request = new URL(departing.navigations[0]);
@@ -114,6 +114,50 @@ test("A user sign-in navigates once with fresh S256 state and only a bounded PKC
   assert.notEqual(fresh.pending.state, stored.state); assert.notEqual(fresh.pending.verifier, stored.verifier);
 });
 
+test("Explicit website signup uses the real signup page with fresh PKCE and the same verified callback", async () => {
+  const initial = setup({href: `${config.redirectUri}?auth=signup#account`});
+  assert.equal(await initial.auth.initialize(), false);
+  assert.deepEqual(initial.navigations, []);
+  initial.auth.dispose();
+  const request = await requestFixture({}, "signUp");
+  assert.equal(request.request.origin, config.cognitoDomain);
+  assert.equal(request.request.pathname, "/signup");
+  assert.equal(request.request.searchParams.get("response_type"), "code");
+  assert.equal(request.request.searchParams.get("redirect_uri"), config.redirectUri);
+  assert.equal(request.request.searchParams.get("client_id"), config.clientId);
+  assert.equal(request.request.searchParams.get("scope"), "openid analysis/read analysis/write");
+  assert.equal(request.request.searchParams.get("code_challenge_method"), "S256");
+  assert.equal(request.request.searchParams.get("code_challenge"), await pkceChallenge(request.pending.verifier));
+  assert.ok(!request.request.href.includes(request.pending.verifier));
+  const login = await requestFixture();
+  assert.notEqual(request.pending.state, login.pending.state);
+  assert.notEqual(request.pending.verifier, login.pending.verifier);
+  const callback = setup({storage: request.storage, href: request.href});
+  assert.equal(await callback.auth.initialize(), true);
+  assert.equal(await callback.auth.getAccessToken(), jwt());
+  assert.equal(callback.storage.getItem(request.pendingKey), null);
+  callback.auth.dispose();
+});
+
+test("Signup shares one user flow and keeps the existing five-minute callback expiry", async () => {
+  const first = setup();
+  const signup = first.auth.signUp();
+  assert.equal(first.auth.signUp(), signup);
+  assert.equal(first.auth.signIn(), signup);
+  const rejected = assert.rejects(signup, {code: "AUTH_CANCELLED"});
+  await until(() => first.navigations.length === 1);
+  assert.equal(new URL(first.navigations[0]).pathname, "/signup");
+  first.auth.dispose(); await rejected;
+  const request = await requestFixture({}, "signUp");
+  let exchanges = 0;
+  const callback = setup({storage: request.storage, href: request.href, now: () => NOW + 300_001,
+    fetchImpl: async () => {exchanges++; return tokenResponse();}});
+  await assert.rejects(callback.auth.initialize(), {code: "AUTH_FAILED"});
+  assert.equal(exchanges, 0);
+  assert.equal(callback.storage.getItem(request.pendingKey), null);
+  callback.auth.dispose();
+});
+
 test("Returning callback removes private URL parameters before a one-use token exchange", async () => {
   const request = await requestFixture(), exchanges = [];
   const callback = setup({storage: request.storage, href: request.href, fetchImpl: async (url, options) => {
@@ -149,6 +193,7 @@ test("Website sign-in requires an exact configured page origin and path", () => 
 test("Mismatched, duplicate, malformed and implicit callbacks consume state and never fetch", async () => {
   const mutations = [url => url.searchParams.set("state", "wrong"), url => url.searchParams.append("state", "second"),
     url => url.searchParams.append("code", "second"), url => url.searchParams.set("code", " "),
+    url => url.searchParams.set("auth", "signup"),
     url => url.searchParams.set("access_token", PRIVATE), url => { url.hash = `access_token=${PRIVATE}`; },
     url => url.searchParams.set("error_description", PRIVATE), url => {
       url.searchParams.delete("code"); url.searchParams.set("error", "access_denied"); url.searchParams.set("error_description", PRIVATE);

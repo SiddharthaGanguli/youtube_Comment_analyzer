@@ -50,14 +50,21 @@ export class JobController {
       }
     } catch (error) { this.fail(error, revision); }
   }
-  async signIn() {
+  get canSignUp() { return typeof this.auth.signUp === "function"; }
+  signIn() { return this.#authenticate("signIn"); }
+  signUp() { return this.#authenticate("signUp"); }
+  async #authenticate(method) {
     if (this.state.busy) return;
+    if (typeof this.auth[method] !== "function") {
+      this.emit({error: {code: "AUTH_UNAVAILABLE", retryable: false}});
+      return;
+    }
     const revision = this.cancel();
     this.lastSubmission = null;
     this.#sessionToken = null;
-    this.emit({phase: "signing-in", busy: true, error: null, analysis: null, result: null, modelDetails: null});
+    this.emit({phase: method === "signUp" ? "signing-up" : "signing-in", busy: true, error: null, analysis: null, result: null, modelDetails: null});
     try {
-      await this.auth.signIn();
+      await this.auth[method]();
       if (!this.current(revision)) return;
       const token = await this.auth.getAccessToken();
       if (this.current(revision)) {
@@ -79,7 +86,7 @@ export class JobController {
   async syncSession() {
     // Own token writes happen before AuthSession.signIn finishes its fenced
     // read-back. AuthSession itself aborts a true remote sign-out during login.
-    if (this.disposed || this.state.phase === "signing-in") return;
+    if (this.disposed || ["signing-in", "signing-up"].includes(this.state.phase)) return;
     const revision = this.revision;
     try {
       const token = await this.auth.getAccessToken();

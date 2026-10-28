@@ -49,15 +49,43 @@ test("Session initialization blocks a second sign-in until callback processing f
   let signIns = 0;
   h.auth.initialize = () => waiting.promise;
   h.auth.signIn = async () => {signIns++;};
+  h.auth.signUp = async () => {signIns++;};
   const initializing = h.controller.initialize();
   assert.equal(h.controller.state.phase, "initializing");
   assert.equal(h.controller.state.busy, true);
   await h.controller.signIn();
+  await h.controller.signUp();
   assert.equal(signIns, 0);
   waiting.resolve();
   await initializing;
   assert.equal(h.controller.state.phase, "ready");
   assert.equal(h.controller.state.busy, false);
+  h.controller.dispose();
+});
+
+test("Signup is explicit, supported only by capable auth, and shares cancellation fencing", async () => {
+  const h = harness(), waiting = deferred();
+  h.auth.signedIn = false;
+  await h.controller.initialize();
+  assert.equal(h.controller.canSignUp, false);
+  await h.controller.signUp();
+  assert.equal(h.controller.state.error.code, "AUTH_UNAVAILABLE");
+  assert.equal(h.controller.state.signedIn, false);
+  let signups = 0, signins = 0;
+  h.auth.signIn = async () => {signins++;};
+  h.auth.signUp = async () => {signups++; await waiting.promise; h.auth.signedIn = true;};
+  assert.equal(h.controller.canSignUp, true);
+  const signing = h.controller.signUp();
+  assert.equal(h.controller.state.phase, "signing-up");
+  assert.equal(h.controller.state.busy, true);
+  await h.controller.signIn();
+  assert.equal(signins, 0);
+  await h.controller.signOut();
+  waiting.resolve(); await signing;
+  assert.equal(signups, 1);
+  assert.equal(h.controller.state.signedIn, false);
+  assert.equal(h.controller.state.phase, "signed-out");
+  assert.equal(h.count("submit"), 0);
   h.controller.dispose();
 });
 

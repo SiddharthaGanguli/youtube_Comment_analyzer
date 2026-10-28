@@ -16,7 +16,7 @@ async function until(check) {
   assert.fail("The fixture interface did not reach the expected state");
 }
 async function setup(t, {scenario = "success", error = null, useTransport = false, synthetic = false,
-  startInService = false, url = "https://fixture.example/dashboard.html"} = {}) {
+  startInService = false, signupSupported = false, authIntent = null, url = "https://fixture.example/dashboard.html"} = {}) {
   const dom = new JSDOM(markup, {url, pretendToBeVisual: true});
   const {window} = dom;
   const originals = Object.fromEntries(["document", "window", "location", "history"].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -29,9 +29,11 @@ async function setup(t, {scenario = "success", error = null, useTransport = fals
   const result = makeFixtureResult({scenario, now});
   const analysis = makeFixtureAnalysis({state: result.state, result, now});
   const calls = {submit: 0, status: 0, download: 0, remove: 0};
-  const auth = {signedIn: false, async initialize() {}, async signIn() {this.signedIn = true;},
+  const authCalls = {signIn: 0, signUp: 0};
+  const auth = {signedIn: false, async initialize() {}, async signIn() {authCalls.signIn++; this.signedIn = true;},
     async getAccessToken() {if (!this.signedIn) throw {code: "AUTH_REQUIRED"}; return "fixture-token";},
     async signOut() {this.signedIn = false;}};
+  if (signupSupported) auth.signUp = async () => {authCalls.signUp++; auth.signedIn = true;};
   let api = {async submit() {calls.submit++; if (error) throw error; return analysis;},
     async status() {calls.status++; return analysis;}, async download() {calls.download++; return result;},
     async delete() {calls.remove++;}, async currentModel() {return makeFixtureModelDetails(result);}};
@@ -61,7 +63,7 @@ async function setup(t, {scenario = "success", error = null, useTransport = fals
     }});
   }
   const controller = new JobController({api, auth, now: () => now, isHidden: () => false});
-  app.configureService(controller, resultToView, {synthetic, startInService});
+  app.configureService(controller, resultToView, {synthetic, startInService, authIntent});
   await controller.initialize();
   const $ = selector => window.document.querySelector(selector);
   async function signIn() {
@@ -82,7 +84,7 @@ async function setup(t, {scenario = "success", error = null, useTransport = fals
       if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
     }
   });
-  return {$, window, controller, calls, requests, result, signIn, submit, setNow: value => {now = value;}};
+  return {$, window, controller, calls, authCalls, requests, result, signIn, submit, setNow: value => {now = value;}};
 }
 
 test("A direct comments demo link initially selects Comments in the sidebar", async t => {
@@ -108,6 +110,33 @@ test("Sidebar selection preserves immediate clicks and follows hash changes and 
   f.window.location.hash = "#unknown-section";
   await until(() => selected() === "#overview");
   assert.equal(f.window.document.querySelectorAll('.nav-link.active').length, 1);
+});
+
+test("Signup stays hidden for unsupported auth and requires consent for a website account", async t => {
+  await t.test("unsupported extension-style auth", async t => {
+    const f = await setup(t, {startInService: true});
+    assert.equal(f.controller.canSignUp, false);
+    assert.equal(f.$("#sign-up").hidden, true);
+    f.$("#accept-policy").checked = true;
+    f.$("#sign-up").dispatchEvent(new f.window.Event("click"));
+    assert.equal(f.authCalls.signUp, 0);
+  });
+  await t.test("explicit website signup", async t => {
+    const f = await setup(t, {startInService: true, signupSupported: true, authIntent: "signup"});
+    assert.equal(f.$("#sign-up").hidden, false);
+    assert.equal(f.$("#sign-up").disabled, true);
+    f.$("#sign-up").click();
+    assert.equal(f.authCalls.signUp, 0);
+    f.$("#accept-policy").checked = true;
+    f.$("#accept-policy").dispatchEvent(new f.window.Event("change"));
+    assert.equal(f.$("#sign-up").disabled, false);
+    f.$("#sign-up").click();
+    await until(() => f.controller.state.signedIn);
+    assert.deepEqual(f.authCalls, {signIn: 0, signUp: 1});
+    assert.equal(f.$("#connection-title").textContent, "Signed in");
+    assert.equal(f.$("#sign-up").hidden, true);
+    assert.deepEqual(f.calls, {submit: 0, status: 0, download: 0, remove: 0});
+  });
 });
 
 test("Demo mode keeps its totals and filters, while consent gates service actions", async t => {

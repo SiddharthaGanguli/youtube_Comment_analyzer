@@ -2,7 +2,7 @@ import { demo } from "./demo-data.mjs";
 import { LABELS, youtubeVideoUrl, summarize, filterComments, commentsCsv, trendBuckets, isReview } from "./lib.mjs";
 
 const $ = selector => document.querySelector(selector);
-let view = demo, isDemo = true, syntheticService = false, controller, resultAdapter, renderedResult;
+let view = demo, isDemo = true, syntheticService = false, controller, resultAdapter, renderedResult, accountIntent = null;
 let summary = summarize(view.comments);
 const state = { sentiment: "All", query: "", reviewOnly: false, sort: "likes", page: 1 };
 const pageSize = 6;
@@ -272,6 +272,7 @@ const PHASE_COPY = {
   initializing: "Checking your sign-in session…",
   "signed-out": "Sign in to analyze a video. Demo mode remains available.", ready: "Paste a public video link to start an analysis.",
   "signing-in": "Complete sign-in in the secure account window.", submitting: "Submitting your analysis…",
+  "signing-up": "Create your account on the secure sign-up page and confirm your email. If this attempt expires, start Sign in again.",
   QUEUED: "Your analysis is queued.", FETCHING: "Reading a bounded sample of public comments…",
   INFERENCING: "Estimating sentiment in the sampled comments…", SAVING: "Preparing your result…",
   "loading-result": "Verifying your result…", complete: "Your sample is ready.", partial: "Part of the sample is ready. See the sampling details below.",
@@ -310,6 +311,14 @@ function renderConnection(status = controller?.state) {
   $("#use-service").textContent = syntheticService ? "Open fixture workspace" : "Use analysis service";
   $("#show-demo").hidden = isDemo;
   $("#sign-in").hidden = isDemo || Boolean(status?.signedIn);
+  const preferSignup = accountIntent === "signup" && controller?.canSignUp;
+  $("#sign-in").classList.toggle("primary", !preferSignup);
+  const signUp = $("#sign-up");
+  if (signUp) {
+    signUp.hidden = isDemo || Boolean(status?.signedIn) || !controller?.canSignUp;
+    signUp.disabled = Boolean(status?.busy) || !$("#accept-policy").checked;
+    signUp.classList.toggle("primary", Boolean(preferSignup));
+  }
   $("#sign-out").hidden = isDemo || !status?.signedIn;
   $("#sign-in").textContent = syntheticService ? "Use fixture account" : "Sign in";
   $("#sign-out").textContent = syntheticService ? "End fixture session" : "Sign out";
@@ -317,8 +326,13 @@ function renderConnection(status = controller?.state) {
   $("#sign-in").disabled = Boolean(status?.busy) || !$("#accept-policy").checked;
   $("#submit-video").textContent = isDemo ? "Check video link" : fixture ? "Simulate test run" : "Analyze comments";
   $("#submit-video").disabled = !isDemo && (status?.busy || !status?.signedIn || !$("#accept-policy").checked);
-  $("#connection-title").textContent = isDemo ? "Demo workspace" : fixture ? status?.signedIn ? "Fixture account active" : "Synthetic test workspace" : status?.signedIn ? "Signed in" : "Your analysis workspace";
-  $("#connection-copy").textContent = fixture ? "This account and all results are simulated locally. No real sign-in or comment fetching takes place." : isDemo ? "Explore sample data, or switch to your configured analysis service." : "Sign in with your Comment Lens account. Signing out clears this session; it does not close your account.";
+  const accountTitle = accountIntent === "signup" && controller?.canSignUp ? "Create your account"
+    : accountIntent === "login" ? "Sign in to Comment Lens" : "Your analysis workspace";
+  $("#connection-title").textContent = isDemo ? "Demo workspace" : fixture ? status?.signedIn ? "Fixture account active" : "Synthetic test workspace" : status?.signedIn ? "Signed in" : accountTitle;
+  $("#connection-copy").textContent = fixture ? "This account and all results are simulated locally. No real sign-in or comment fetching takes place." : isDemo ? "Explore sample data, or switch to your configured analysis service."
+    : !status?.signedIn && accountIntent === "signup" && controller?.canSignUp
+      ? "Agree to the policies, then choose Sign up. Confirm your email on the secure account page. If the attempt expires, return here and start Sign in again."
+      : "Sign in with your Comment Lens account. Signing out clears this session; it does not close your account.";
   $("#job-status").hidden = isDemo;
   $("#analysis-content").hidden = !isDemo && !status?.result;
   if (!isDemo && !status?.result) $("#nav-count").textContent = "0";
@@ -360,8 +374,9 @@ export function showUnavailable() {
   $("#video-feedback").hidden = false;
   $("#video-feedback").textContent = "Live analysis is not connected on this page yet. You can explore the labeled demo below.";
 }
-export function configureService(nextController, adapter, {synthetic = false, startInService = false} = {}) {
+export function configureService(nextController, adapter, {synthetic = false, startInService = false, authIntent = null} = {}) {
   syntheticService = synthetic;
+  accountIntent = ["login", "signup"].includes(authIntent) ? authIntent : null;
   isDemo = !startInService;
   controller = nextController; resultAdapter = adapter; controller.onChange = renderConnection; controller.suspended = !startInService;
   if (isDemo) {view = demo; renderedResult = null; renderData();}
@@ -374,6 +389,7 @@ export function configureService(nextController, adapter, {synthetic = false, st
   }
   $("#accept-policy").addEventListener("change", () => renderConnection());
   $("#sign-in").addEventListener("click", () => {if ($("#accept-policy").checked) controller.signIn();});
+  $("#sign-up")?.addEventListener("click", () => {if (controller.canSignUp && $("#accept-policy").checked) controller.signUp();});
   $("#sign-out").addEventListener("click", () => controller.signOut());
   $("#use-service").addEventListener("click", async () => {isDemo = false; renderConnection(); await controller.resume();});
   $("#show-demo").addEventListener("click", () => {controller.pause(); clearDetail(); isDemo = true; view = demo; renderedResult = null; renderData(); renderConnection();});

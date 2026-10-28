@@ -1755,6 +1755,7 @@ body.popup {
  font-family:'Segoe UI',Arial,sans-serif;
 }
 html {scroll-padding-top:96px}
+.account-entry {scroll-margin-top:24px}
 h1 {font-weight:650;letter-spacing:-.055em;font-size:38px}
 h2 {font-weight:650}
 .eyebrow {letter-spacing:.14em;font-size:10px}

@@ -210,7 +210,10 @@ export class WebAuthSession {
     return this.#session.accessToken;
   }
 
-  signIn() {
+  signIn() { return this.#authorize("/oauth2/authorize"); }
+  signUp() { return this.#authorize("/signup"); }
+
+  #authorize(path) {
     if (this.#signing) return this.#signing;
     const generation = this.#generation, controller = new AbortController();
     this.#signing = (async () => {
@@ -225,7 +228,7 @@ export class WebAuthSession {
         if (generation !== this.#generation) throw failure("AUTH_CANCELLED");
         this.#storage.setItem(this.#key, JSON.stringify(pending));
         this.#session = null;
-        const url = new URL(`${this.#config.cognitoDomain}/oauth2/authorize`);
+        const url = new URL(`${this.#config.cognitoDomain}${path}`);
         url.search = new URLSearchParams({response_type: "code", client_id: this.#config.clientId, redirect_uri: this.#config.redirectUri,
           scope: ["openid", ...SCOPES].join(" "), state: pending.state, code_challenge_method: "S256", code_challenge: challenge});
         this.#navigate(url.href);

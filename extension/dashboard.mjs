@@ -20,8 +20,11 @@ export async function connectWebService(settings, {runtime = globalThis, depende
       "refresh_token", "token_type", "expires_in", "scope"];
     const fragment = new URLSearchParams(current.hash.slice(1));
     const hasCallback = callbackKeys.some(key => current.searchParams.has(key) || fragment.has(key));
+    const authValues = current.searchParams.getAll("auth");
+    const authIntent = !hasCallback && authValues.length === 1 && ["login", "signup"].includes(authValues[0])
+      ? authValues[0] : null;
     const startInDemo = current.searchParams.getAll("demo").length === 1
-      && current.searchParams.get("demo") === "1" && !hasCallback;
+      && current.searchParams.get("demo") === "1" && !hasCallback && !authIntent;
     const [{WebAuthSession}, {AnalysisClient}, {JobController}, {resultToView}] = dependencies
       ? [{WebAuthSession: dependencies.WebAuthSession}, {AnalysisClient: dependencies.AnalysisClient},
         {JobController: dependencies.JobController}, {resultToView: dependencies.resultToView}]
@@ -31,7 +34,7 @@ export async function connectWebService(settings, {runtime = globalThis, depende
       storage: runtime.sessionStorage});
     const api = new AnalysisClient({config, auth, configValidator: validateWebClientConfig});
     const controller = new JobController({api, auth, pollScheduleSeconds: config.pollScheduleSeconds, maxComments: config.maxComments});
-    configureService(controller, resultToView, {startInService: !startInDemo});
+    configureService(controller, resultToView, {startInService: !startInDemo, authIntent});
     await controller.initialize();
     // A full-page sign-in leaves a pending in-memory promise. Always discard
     // that session on navigation; only its short-lived PKCE record survives.

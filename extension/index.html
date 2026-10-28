@@ -13,14 +13,20 @@
   <a class="skip-link" href="#home-main">Skip to homepage</a>
 
   <header class="home-header">
-    <a class="brand" href="index.html">
+    <a class="brand" href="index.html" aria-label="Comment Lens home">
       <span class="brand-icon" aria-hidden="true">▰</span>
       <span>Comment<span class="brand-accent">Lens</span></span>
     </a>
     <nav aria-label="Main navigation">
-      <a href="dashboard.html">Dashboard</a>
-      <a href="privacy.html">Privacy Policy</a>
-      <a href="terms.html">Terms of Service</a>
+      <div class="home-nav-primary">
+        <a href="dashboard.html">Dashboard</a>
+        <a class="home-login" href="dashboard.html?auth=login#account">Login</a>
+        <a class="home-signup" href="dashboard.html?auth=signup#account">Sign up</a>
+      </div>
+      <div class="home-nav-legal">
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Service</a>
+      </div>
     </nav>
   </header>
 

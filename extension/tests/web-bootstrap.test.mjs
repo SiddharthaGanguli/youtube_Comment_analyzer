@@ -22,12 +22,13 @@ async function setup(t, url = WEB_URL) {
   window.HTMLDialogElement.prototype.close = function() {this.open = false;};
   window.HTMLElement.prototype.scrollIntoView = function() {};
   const module = await import(`../dashboard.mjs?web-bootstrap=${serial++}`);
-  const received = {auth: [], api: [], controller: [], initialize: 0, signIn: 0, resume: 0, dispose: 0, reload: 0};
+  const received = {auth: [], api: [], controller: [], initialize: 0, signIn: 0, signUp: 0, resume: 0, dispose: 0, reload: 0};
   const runtime = {location: {href: window.location.href, reload() {received.reload++;}},
     history: window.history, sessionStorage: window.location.protocol === "chrome-extension:" ? undefined : window.sessionStorage,
     addEventListener: window.addEventListener.bind(window)};
   class WebAuthSession {
     constructor(options) {received.auth.push(options);}
+    async signUp() {}
   }
   class AnalysisClient {
     constructor(options) {
@@ -38,10 +39,13 @@ async function setup(t, url = WEB_URL) {
   class JobController {
     constructor(options) {
       received.controller.push(options);
+      this.auth = options.auth;
       this.state = {phase: "signed-out", signedIn: false, busy: false, analysis: null, result: null, error: null, modelDetails: null};
     }
     async initialize() {received.initialize++; this.onChange(this.state);}
     async signIn() {received.signIn++; this.state = {...this.state, signedIn: true, phase: "ready"}; this.onChange(this.state);}
+    get canSignUp() {return typeof this.auth.signUp === "function";}
+    async signUp() {received.signUp++; this.state = {...this.state, signedIn: true, phase: "ready"}; this.onChange(this.state);}
     async syncSession() {}
     async resume() {received.resume++;}
     pause() {}
@@ -108,6 +112,44 @@ test("An explicit website demo link immediately shows labeled comments and still
   assert.equal(f.$("#connection-title").textContent, "Signed in");
 });
 
+test("Homepage login and signup links show consent and wait for an explicit account action", async t => {
+  for (const intent of ["login", "signup"]) {
+    await t.test(intent, async t => {
+      const f = await setup(t, `${WEB_URL}?auth=${intent}#account`);
+      assert.ok(await f.module.connectWebService(CONFIG, {runtime: f.runtime, dependencies: f.dependencies}));
+      assert.equal(f.received.signIn, 0); assert.equal(f.received.signUp, 0);
+      assert.equal(f.$("#mode-badge").textContent, "Analysis workspace");
+      assert.equal(f.$("#policy-consent").hidden, false);
+      assert.equal(f.$("#accept-policy").checked, false);
+      assert.equal(f.$("#sign-in").disabled, true);
+      assert.equal(f.$("#sign-up").hidden, false);
+      assert.equal(f.$("#sign-up").disabled, true);
+      assert.equal(f.$("#sign-up").classList.contains("primary"), intent === "signup");
+      assert.equal(f.$("#sign-in").classList.contains("primary"), intent === "login");
+      assert.equal(f.$("#connection-title").textContent, intent === "signup" ? "Create your account" : "Sign in to Comment Lens");
+      const action = intent === "signup" ? "#sign-up" : "#sign-in";
+      f.$(action).click();
+      assert.equal(f.received.signIn, 0); assert.equal(f.received.signUp, 0);
+      f.$("#accept-policy").checked = true;
+      f.$("#accept-policy").dispatchEvent(new f.window.Event("change"));
+      f.$(action).click();
+      assert.equal(f.received.signIn, intent === "login" ? 1 : 0);
+      assert.equal(f.received.signUp, intent === "signup" ? 1 : 0);
+    });
+  }
+});
+
+test("Only a single recognized account intent overrides an explicit demo link", async t => {
+  for (const query of ["auth=signup&demo=1", "auth=reset&demo=1", "auth=signup&auth=login&demo=1"]) {
+    await t.test(query, async t => {
+      const f = await setup(t, `${WEB_URL}?${query}#account`);
+      assert.ok(await f.module.connectWebService(CONFIG, {runtime: f.runtime, dependencies: f.dependencies}));
+      assert.equal(f.$("#mode-badge").textContent, query === "auth=signup&demo=1" ? "Analysis workspace" : "Demo data");
+      assert.equal(f.received.signIn, 0); assert.equal(f.received.signUp, 0);
+    });
+  }
+});
+
 test("Only one exact demo=1 value opts the website into sample mode", async t => {
   for (const query of ["demo=0", "demo=true", "demo=", "demo=1&demo=1", "demo=1&demo=0"]) {
     await t.test(query, async t => {
@@ -121,7 +163,8 @@ test("Only one exact demo=1 value opts the website into sample mode", async t =>
 });
 
 test("OAuth callbacks take precedence over a demo link and failed sign-in remains visible", async t => {
-  for (const suffix of ["?demo=1&code=unmatched-code&state=unmatched-state", "?demo=1#access_token=invalid-token"]) {
+  for (const suffix of ["?demo=1&code=unmatched-code&state=unmatched-state", "?demo=1#access_token=invalid-token",
+    "?auth=signup&demo=1&code=unmatched-code&state=unmatched-state"]) {
     await t.test(suffix, async t => {
       const f = await setup(t, WEB_URL + suffix);
       let tokenRequests = 0;

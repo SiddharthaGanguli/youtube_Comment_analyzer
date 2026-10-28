@@ -20,6 +20,12 @@ mode does not fetch comments or turn the sample into that video's results.
 The normal [analysis workspace](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html)
 starts empty and offers account sign-in.
 
+The homepage's [Login](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html?auth=login#account)
+and [Signup](https://siddharthaganguli.github.io/youtube_Comment_analyzer/dashboard.html?auth=signup#account)
+links open the dashboard's account section. Accept the Terms of Service and
+Privacy Policy before continuing to Amazon Cognito. Signup includes email
+confirmation. Click the Comment Lens logo in the dashboard to return home.
+
 The static [Comment Lens homepage](https://siddharthaganguli.github.io/youtube_Comment_analyzer/),
 [Privacy Policy](https://siddharthaganguli.github.io/youtube_Comment_analyzer/privacy.html)
 and [Terms of Service](https://siddharthaganguli.github.io/youtube_Comment_analyzer/terms.html)
